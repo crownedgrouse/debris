@@ -1,0 +1,31 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <link type="text/css" rel="stylesheet" href="{{ url }}/css/{{ repository }}.css" />
+</head>
+<body>
+    <div class="header">
+    </div>
+    <div class="main">
+    </div>
+    <div class="howto">
+    <h2>Adding the repository</h2>
+    <p>First, add the repository public key for apt-secure using following commands :</p>
+    <p><pre>
+ wget {{ url }}/{{ repository }}/{{ pubkey }} 
+ sudo apt-key add {{ pubkey }} </pre></p>
+    <p>Add line(s) like below to your <tt>/etc/apt/sources.list</tt> file :</p>
+    <p><pre> deb {{ url }}/{{ repository }} SUITE COMPONENTS </pre></p>
+    <p>where <tt>SUITE</tt> can be one of those values : <tt>{{ suites }}</tt> </p>
+    <p>where <tt>COMPONENTS</tt> can be zero or more, blank separated, of those values : <tt>{{ components }}</tt> </p>
+    <p></p>
+    </div>
+    <div class="disclaimer">
+    </div>
+
+    <div class="footer">	
+        <!-- Please kindly keep this -->
+        <p>Powered by <a href="http://github.com/crownedgrouse/debris">debris</a></p>
+    </div>
+</body>
+</html>

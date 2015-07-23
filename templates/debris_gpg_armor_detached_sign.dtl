@@ -1,0 +1,1 @@
+{{ gpg_binary }} --yes --no-tty --batch -abs --passphrase-file {{ gpg_passphase_file }} -u {{ gpg_user }} -o {{ target }} {{ source }} 

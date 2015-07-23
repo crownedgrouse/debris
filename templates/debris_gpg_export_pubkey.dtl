@@ -1,0 +1,1 @@
+{{ gpg_binary }} --yes --no-tty --batch --armor --output {{ target }} --export {{ gpg_user }} 

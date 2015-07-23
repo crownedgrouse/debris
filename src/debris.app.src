@@ -1,0 +1,25 @@
+{application, debris,
+ [
+  {description, "DEBian Repository as Internet Service"},
+  {vsn, "0.1.0"},
+  {id, "git"},
+  {mod, {debris_app,[]}},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, [ {address, "0.0.0.0"}
+         ,{backend, inets}
+         ,{document_root, "/var/www/"} % Default to priv/www directory
+         ,{port, 8888}
+         ,{repositories, ["debian", "ubuntu"]}
+         ,{fqdn, "cameleon.pailleau.priv:8888" } % Public server name exposed
+         %% Optional GPG signing 
+         %% For gpg signing to work, all gpg variables must be set 
+         ,{gpg_binary, "/usr/bin/gpg"}          % Absolute path to your gpg binary
+         ,{gpg_user, "67B2BA5C"}                % A valid user or key identifier
+         ,{gpg_passphase_file, "/tmp/pass"} % MUST not be under document_root ! 
+        ]}
+ ]}.
