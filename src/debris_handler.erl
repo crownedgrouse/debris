@@ -6,12 +6,16 @@
         ws_info/3,
         ws_terminate/3]).
 
--define(NOTFOUND, "<html><body><h1>Not found</h1></body></html>").
+-define(NOTFOUND, "<html><body><h1>Not found.</h1></body></html>").
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
 run(Bridge) ->
+    Index = case application:get_env(debris, backend, inets) of
+                cowboy -> false ;
+                _      -> true
+            end,
     % Test if a file is requested, otherwise return 404 Not Found
     {ok, DocRoot} =  application:get_env(simple_bridge, document_root),
     Url = case filename:split(sbw:path(Bridge)) of
@@ -21,8 +25,13 @@ run(Bridge) ->
           end,
     Target = filename:join([DocRoot, Url]),
     BridgeRet = case filelib:is_dir(Target) of
-                     true  -> Bridge2 = sbw:set_status_code(404, Bridge),
-                              sbw:set_response_data(?NOTFOUND, Bridge2);
+                     true  -> case Index of
+                                  false -> Bridge2 = sbw:set_status_code(404, Bridge),
+                                           sbw:set_response_data(?NOTFOUND, Bridge2) ;
+                                  true  -> Bridge2 = sbw:set_header("Content-Type", "text/html", Bridge),
+                                           Bridge3 = sbw:set_status_code(200, Bridge2),
+                                           sbw:set_response_data([debris_index:get_index(debris_index_tpl, Url, DocRoot)], Bridge3)
+                              end;                              
                      false -> % Specify mimetype
                               Mime = case filename:extension(Target) of
                                           ".gpg" -> "application/pgp-keys; charset=us-ascii";
@@ -39,7 +48,11 @@ run(Bridge) ->
                                         Bridge2 = sbw:set_header("Content-Type", "text/html", Bridge),
                                         Bridge3 = sbw:set_status_code(200, Bridge2),
                                         {ok, HTML} = file:read_file(Target),
-                                        sbw:set_response_data([binary_to_list(HTML)], Bridge3);
+                                        IndexHtml = case Index of
+                                                         true  -> debris_index:get_index(debris_index_tpl, Url, DocRoot) ;
+                                                         false -> []
+                                                    end,
+                                        sbw:set_response_data([IndexHtml] ++ [binary_to_list(HTML)], Bridge3);
                                    _ -> Bridge2 = sbw:set_header("Content-Type", Mime, Bridge),
                                         Bridge3 = sbw:set_status_code(200, Bridge2),
                                         sbw:set_response_file(Target, Bridge3)
@@ -63,4 +76,8 @@ ws_info(Data, _Bridge, _State) ->
 
 ws_terminate(_Reason, _Bridge, _State) ->
     ok.
+
+
+
+
 

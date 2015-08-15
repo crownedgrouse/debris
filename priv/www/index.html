@@ -1,0 +1,36 @@
+<html>
+    <head>
+        <title>Index of {{ dir }}</title>
+    </head>
+    <body>
+    <h1>Index of {{ dir }}</h1>
+    <table>
+         <tr align="left" width="50%" cellspacing="10">
+         <th size="5%"></th>
+         <th size="20%"><a href="?C=N;O=D"><tt>Name</tt></a></th>
+         <th size="10%"><a href="?C=M;O=A"><tt>Last modified</tt></a></th>
+         <th size="5%"><a href="?C=S;O=A"><tt>Size</tt></a></th>
+         <th size="10%"><a href="?C=D;O=A"><tt>Description</tt></a></th>
+         </tr>
+    <hr>
+         <tr align="left" width="50%">
+         <td size="5%">&ldca;</td>
+         <td size="20%"><a href="{{ parent }}"><tt>Parent Directory</tt></a></td>
+         <td size="10%"><tt></tt></td>
+         <td size="5%"><tt></tt></td>
+         <td size="10%"><tt>-</tt></td>
+
+    {% for i in entries %}
+         <tr align="left" width="50%">
+         <td size="5%" class="{{ i.type }}">{{ i.symbol }}</td>
+         <td size="20%"><a href="{{ i.url }}"><tt>{{ i.name }}{% if i.type == 'directory' %}/{% endif %}</tt></a></td>
+         <td size="10%"><tt>{{ i.date }}</tt></td>
+         <td size="5%"><tt>{{ i.size|filesizeformat }}</tt></td>
+         <td size="10%"><tt></tt></td>  
+         </tr>                           
+    {% endfor %}
+    </table>
+    <hr>
+    </tt>
+    </body>
+</html>
