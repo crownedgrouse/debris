@@ -8,7 +8,7 @@
          <tr align="left" width="50%" cellspacing="10">
          <th size="5%"></th>
          <th size="20%"><a href="?C=N;O=D"><tt>Name</tt></a></th>
-         <th size="10%"><a href="?C=M;O=A"><tt>Last modified</tt></a></th>
+         <th size="10%" align="center"><a href="?C=M;O=A"><tt>Last modified</tt></a></th>
          <th size="5%"><a href="?C=S;O=A"><tt>Size</tt></a></th>
          <th size="10%"><a href="?C=D;O=A"><tt>Description</tt></a></th>
          </tr>
@@ -24,8 +24,8 @@
          <tr align="left" width="50%">
          <td size="5%" class="{{ i.type }}">{{ i.symbol }}</td>
          <td size="20%"><a href="{{ i.url }}"><tt>{{ i.name }}{% if i.type == 'directory' %}/{% endif %}</tt></a></td>
-         <td size="10%"><tt>{{ i.date }}</tt></td>
-         <td size="5%"><tt>{{ i.size|filesizeformat }}</tt></td>
+         <td size="10%"><tt>&nbsp;&nbsp;{{ i.date }}</tt>&nbsp;&nbsp;</td>
+         <td size="5%"><tt>{% if i.type != 'directory' %}{{ i.size|filesizeformat }}{% else %}-{% endif %}</tt></td>
          <td size="10%"><tt></tt></td>  
          </tr>                           
     {% endfor %}

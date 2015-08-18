@@ -102,12 +102,19 @@ handle_call(signature_needed, _From, State)->
                       % Return cached value if exists
                       case erlang:get(signature_needed) of
                            undefined -> skip ; % i.e check at each start
+                           false     -> throw(false) ;
                            true      -> throw(true)
                       end,
                       DocRoot = application:get_env(debris, document_root, ""),
                       Gpg_binary = application:get_env(debris, gpg_binary, ""),
                       Gpg_user = application:get_env(debris, gpg_user, ""),
                       Gpg_passphase_file = application:get_env(debris, gpg_passphase_file, ""),
+                      % 
+                      case Gpg_binary of
+                           "" -> erlang:put(signature_needed, false),
+                                 throw(false) ;
+                           _  -> skip
+                      end,
                       % Check it is an absolute path
                       case filename:pathtype(Gpg_binary) of
                            absolute -> ok ;

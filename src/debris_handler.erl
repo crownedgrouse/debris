@@ -13,7 +13,7 @@
 %%-------------------------------------------------------------------------
 run(Bridge) ->
     Index = case application:get_env(debris, backend, inets) of
-                cowboy -> false ;
+                cowboyxxx -> false ;
                 _      -> true
             end,
     % Test if a file is requested, otherwise return 404 Not Found

@@ -4,7 +4,7 @@
 
 -include_lib("kernel/include/file.hrl").
 
-compile(Name, Path) -> {ok, Name} = erlydtl:compile(Path, Name, [{out_dir, false}]),
+compile(Name, Path) -> {ok, Name} = erlydtl:compile(Path, Name),
                        Name.
 
 get_index(Name, Path, RootPath) -> 
@@ -67,7 +67,8 @@ get_symbol_noext(F) -> case filename:basename(F) of
 
                        end.
 
-format_date(D) -> D.
+% 18-Aug-2015 03:52
+format_date(D) ->  erlydtl_dateformat:format(D, "d-M-Y H:i").
 
 get_type(F) -> {ok, FileInfo} = file:read_file_info(F) ,
                 FileInfo#file_info.type .

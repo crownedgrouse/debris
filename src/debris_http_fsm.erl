@@ -21,6 +21,18 @@ init(_) ->
     DocRoot       = application:get_env(debris, document_root, DefRootDir),
     ok            = filelib:ensure_dir(filename:join(DocRoot, "fakedir")),
     Backend       = application:get_env(debris, backend, inets),
+    Repos         = case Backend of
+                         cowboyxxx ->  error_logger:info_msg("Forcing static directories for cowboy~n~n", []),
+                                    application:get_env(debris, repositories, ["debian"]) ;
+                         _      -> []
+                    end,
+
+    % Create static_paths mainly for cowboy dispatch rules to work well
+    Static        = lists:flatten(lists:map(fun(X) -> 
+                                        lists:map(fun(Y) -> {a, filename:join([X, Y]) ++ "/"}  % keep trailing / !
+                                                  end, ["dists","pool"])                                                  
+                                  end, Repos)),
+    Statics       = lists:map(fun({a, Z}) -> Z end, Static),
     % Should the http server be started ?
     Ret = case Backend of
            none -> ignore ;
@@ -28,7 +40,12 @@ init(_) ->
                     % Override simple_bridge config variables
                     ok = application:load(simple_bridge),
                     lists:foreach(fun({Par, Val}) -> ok = application:set_env(simple_bridge, Par, Val, [{persistent, true}]) end,
-                                [{address, Address}, {port, Port}, {document_root, DocRoot}, {backend, Backend}]),
+                                [{address, Address}, 
+                                 {port, Port}, 
+                                 {document_root, DocRoot}, 
+                                 {backend, Backend}, 
+                                 {static_paths, Statics},
+                                 {handler, debris_handler}]),
                     ok = application:start(simple_bridge), 
                     {ok, http_start, #http{ backend=Backend
                                            ,address=Address
