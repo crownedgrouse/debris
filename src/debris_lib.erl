@@ -41,14 +41,20 @@
 %%-------------------------------------------------------------------------
 init_repo() -> RootDir = get_rootdir(),
                init_repo(RootDir).
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 init_repo(RootDir, Repo) -> PrivDir = code:priv_dir(debris),
                             RepoDir = filename:join([PrivDir, "repos", Repo]),
                             ok = filelib:ensure_dir(?JOIN(RepoDir, "fakedir")), 
                             % Attic directories for very old packages not anymore exposed - debris never remove a package !
                             ok = filelib:ensure_dir(filename:join([RepoDir, "attic", "fakedir"])),
                             init_repo(?JOIN(RootDir, Repo)).
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 init_repo(RootDir) when is_tuple(RootDir) -> {DocRoot, List} = RootDir,
                                              lists:foreach(fun(R) -> init_repo(DocRoot, R) end, List);
 
@@ -61,7 +67,7 @@ init_repo(RootDir) when is_list(RootDir) ->
          ok = filelib:ensure_dir(?JOIN(Dists,"fakedir")),
          ok = filelib:ensure_dir(?JOIN(Pool,"fakedir")),
          % Create Archives (only from config file)
-         Archives = application:get_env(debris, archives, ["stable", "testing", "unstable"]),
+         Archives = application:get_env(debris, suites, ?DEFAULT_ARCHIVES),
          lists:foreach(fun(D) ->  ok = filelib:ensure_dir(?JOIN(?JOIN(Dists, D),"fakedir")) end,  Archives),
          % Create Components ( default : main )
          Components = application:get_env(debris, components, ["main"]),
@@ -135,15 +141,23 @@ create_repo_index_html(Source, RootDir) ->
             Target  = ?JOIN(RootDir, "index.html"),
             Repo    = filename:basename(RootDir),
             Module  = list_to_atom(Repo ++ "_index_html"),
+            Suites  = application:get_env(debris, suites, ?DEFAULT_ARCHIVES),
+            Compos  = application:get_env(debris, components, ["main"]),
             {ok, Module} = erlydtl:compile_file(Source, Module),
-            Vars = get_template_vars() ++ [{repository, Repo}, 
-                                           {pubkey, Repo ++ ".asc"}],
+            Vars = get_template_vars() ++ [ {repository, Repo}
+                                           ,{pubkey, Repo ++ ".asc"}
+                                           ,{suites, Suites}
+                                           ,{components, Compos}
+                                          ],
             case Module:render(Vars) of
                  {ok, IOList} -> HTML = binary_to_list(iolist_to_binary(IOList)),
                                  ok = file:write_file(Target, HTML) ;
                  {error, Err} ->  exit("Unable to compile "++ Source ++ " due to errors : " ++ Err)
             end.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 get_template_vars() -> {ok, Host} = inet:gethostname(),
                        {ok, FQDN} = net_adm:dns_hostname(Host),
                         URL = "http://" ++ application:get_env(debris, fqdn, FQDN),
@@ -401,9 +415,15 @@ clear_sign(Source)   -> gen_server:call(debris_srv, {sign_attached, Source, ?JOI
 %%-------------------------------------------------------------------------
 update_repo() -> RootDir = get_rootdir(),
                  update_repo(RootDir).
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 update_repo(RootDir, Repo) -> update_repo(?JOIN(RootDir, Repo)).
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 update_repo(RootDir) when is_tuple(RootDir) -> {DocRoot, List} = RootDir,
                                                lists:foreach(fun(R) -> update_repo(?JOIN(DocRoot,R)) end, List);
 

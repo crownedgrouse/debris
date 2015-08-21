@@ -30,7 +30,7 @@ run(Bridge) ->
                                            sbw:set_response_data(?NOTFOUND, Bridge2) ;
                                   true  -> Bridge2 = sbw:set_header("Content-Type", "text/html", Bridge),
                                            Bridge3 = sbw:set_status_code(200, Bridge2),
-                                           sbw:set_response_data([debris_index:get_index(debris_index_tpl, Url, DocRoot)], Bridge3)
+                                           sbw:set_response_data([debris_index:get_index(debris_index_tpl, Url, DocRoot, sbw:query_params(Bridge))], Bridge3)
                               end;                              
                      false -> % Specify mimetype
                               Mime = case filename:extension(Target) of
@@ -49,7 +49,7 @@ run(Bridge) ->
                                         Bridge3 = sbw:set_status_code(200, Bridge2),
                                         {ok, HTML} = file:read_file(Target),
                                         IndexHtml = case Index of
-                                                         true  -> debris_index:get_index(debris_index_tpl, Url, DocRoot) ;
+                                                         true  -> debris_index:get_index(debris_index_tpl, Url, DocRoot, sbw:query_params(Bridge)) ;
                                                          false -> []
                                                     end,
                                         sbw:set_response_data([IndexHtml] ++ [binary_to_list(HTML)], Bridge3);
@@ -64,16 +64,25 @@ run(Bridge) ->
 %% @end
 %%-------------------------------------------------------------------------
 ws_init(_Bridge) -> ok.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 ws_message({text, Data}, _State, _Bridge) ->
     {reply, {text, Data}};
 ws_message({binary, Data}, _State, _Bridge) ->
     {reply, {binary, Data}}.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 ws_info(Data, _Bridge, _State) ->
     Reply = {text, io_lib:format("~s", [Data])},
     {reply, Reply}.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 ws_terminate(_Reason, _Bridge, _State) ->
     ok.
 

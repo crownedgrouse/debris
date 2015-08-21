@@ -12,18 +12,36 @@
 -behaviour(gen_server).
 
 -define(PRINT(X), io:format("~p~n",[X])).
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 start_link() -> start_link(undefined).
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 start_link(Args) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 init(_Args) -> {ok, _Args}.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 terminate(_Reason, _Data) -> ok.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 handle_info(_Info, State) -> {noreply, State}.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 handle_cast(Msg, State) -> {noreply, State}.
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -54,7 +72,10 @@ handle_call({disable, Args}, _From, State) ->
                                         {reply, ok, State, hibernate};
 handle_call({delete, Args}, _From, State) -> 
                                         {reply, ok, State, hibernate};
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 handle_call({sign_detached, Source, Target}, _From, State)-> 
         {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
         {ok, Gpg_user} = application:get_env(debris, gpg_user),
@@ -67,7 +88,10 @@ handle_call({sign_detached, Source, Target}, _From, State)->
         % Execute
         os:cmd(string:strip(binary_to_list(iolist_to_binary(IOList)), right, $\n)),
         {reply, ok, State};
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 handle_call({sign_attached, Source, Target}, _From, State)-> 
         {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
         {ok, Gpg_user} = application:get_env(debris, gpg_user),
@@ -80,7 +104,10 @@ handle_call({sign_attached, Source, Target}, _From, State)->
         % Execute
         os:cmd(string:strip(binary_to_list(iolist_to_binary(IOList)), right, $\n)),
         {reply, ok, State};
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 handle_call({export_pubkey, Target}, _From, State)-> 
         {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
         {ok, Gpg_user} = application:get_env(debris, gpg_user),
@@ -149,8 +176,14 @@ handle_call(signature_needed, _From, State)->
                       exit:Reason -> application:stop(simple_bridge),
                                      {stop, {security, Reason}, false, State}
                 end;
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 handle_call(_, _From, State) -> {reply, {error, function_clause}, State, hibernate}.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 

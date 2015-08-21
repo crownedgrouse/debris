@@ -1,21 +1,45 @@
 -module(debris_index).
 
--export([compile/2, get_index/3]).
+-export([compile/2, get_index/3, get_index/4]).
 
 -include_lib("kernel/include/file.hrl").
 
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 compile(Name, Path) -> {ok, Name} = erlydtl:compile(Path, Name),
                        Name.
 
-get_index(Name, Path, RootPath) -> 
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
+get_index(Name, Path, RootPath) -> get_index(Name, Path, RootPath, []).
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
+get_index(Name, Path, RootPath, Args) -> 
+                Dir = case filename:basename(Path) of
+                           "index.html" -> filename:dirname(Path) ;
+                            _           -> Path
+                end,
                 {ok, A} = Name:render([
-                                        {dir, "/" ++ Path},
+                                        {dir, "/" ++ Dir},
                                         {parent, "/" ++ filename:dirname(Path)},
+                                        {n, 'A'},
+                                        {m, 'D'},
+                                        {s, 'D'},
+                                        {d, 'D'},
                                         get_entries(RootPath, Path)
                                       ]),
                 %io:format("~p~n",[A]),
                 A.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 get_entries(RootPath, Url) -> 
                      Path  = filename:join([RootPath, Url]),
                      RPath = case filelib:is_dir(Path) of
@@ -42,7 +66,10 @@ get_entries(RootPath, Url) ->
 %io:format("~p ~p~n",[Path, E]),
 
                      {entries, E}.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 get_symbol(F) -> case filelib:is_dir(F) of
                       true  -> '&angrt;' ;
                       false -> 
@@ -57,7 +84,10 @@ get_symbol(F) -> case filelib:is_dir(F) of
                                     _      ->  get_symbol_noext(F)
                                 end
                  end.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 get_symbol_noext(F) -> case filename:basename(F) of
                             "README"    -> '&telrec;' ;
                             "InRelease" -> '&circledS;' ;
@@ -66,10 +96,16 @@ get_symbol_noext(F) -> case filename:basename(F) of
                             _           -> '&quest;' 
 
                        end.
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 % 18-Aug-2015 03:52
 format_date(D) ->  erlydtl_dateformat:format(D, "d-M-Y H:i").
-
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
 get_type(F) -> {ok, FileInfo} = file:read_file_info(F) ,
                 FileInfo#file_info.type .
 

@@ -16,8 +16,8 @@
  sudo apt-key add {{ pubkey }} </pre></p>
     <p>Add line(s) like below to your <tt>/etc/apt/sources.list</tt> file :</p>
     <p><pre> deb {{ url }}/{{ repository }} SUITE COMPONENTS </pre></p>
-    <p>where <tt>SUITE</tt> can be one of those values : <tt>{{ suites }}</tt> </p>
-    <p>where <tt>COMPONENTS</tt> can be zero or more, blank separated, of those values : <tt>{{ components }}</tt> </p>
+    <p>where <tt>SUITE</tt> can be one of those values :<tt>{% for i in suites %}&nbsp;{{ i }}{% endfor %}</tt> </p>
+    <p>where <tt>COMPONENTS</tt> can be zero or more, blank separated, of those values :<tt>{% for i in components %}&nbsp;{{ i }}{% endfor %}</tt> </p>
     <p></p>
     </div>
     <div class="disclaimer">
@@ -25,7 +25,8 @@
 
     <div class="footer">	
         <!-- Please kindly keep this -->
-        <p>Powered by <a href="http://github.com/crownedgrouse/debris">debris</a></p>
+        <hr/>
+        <p align="right">Powered by <a href="http://github.com/crownedgrouse/debris">debris</a>&nbsp;&nbsp;</p>
     </div>
 </body>
 </html>
