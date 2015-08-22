@@ -69,19 +69,20 @@ init_repo(RootDir) when is_list(RootDir) ->
          Pool  = ?JOIN(RootDir, "pool"),
          ok = filelib:ensure_dir(?JOIN(Dists,"fakedir")),
          ok = filelib:ensure_dir(?JOIN(Pool,"fakedir")),
-         % Create Suites (only from config file)
+         % Suites
          Suites = get_conf(Repo, suites, ?DEFAULT_SUITES),
-         %DSuites = lists:map(fun(S) -> ?JOIN(Dists, S) end, Suites),
          DSuites = dir_combine({dir, Dists}, dir_escape(Suites)),
-         % Create Components ( default : main )
+         % Components 
          Components = get_conf(Repo, components, ["main"]),
+         % Create in pool/
+         lists:foreach(fun(C) -> ok = filelib:ensure_dir(filename:join([Pool, C, "fakedir"])) end , Components),
+         % Create in dists/
          Dirs = dir_combine(dir_escape(DSuites), dir_escape(Components)),
          Subs = get_subs(),
-         Terminals = lists:flatmap(fun(S) -> Dt = lists:map(fun(Z) -> Dc = ?JOIN(S, Z) ,
-                                                                  ok = filelib:ensure_dir(?JOIN(Dc, "fakedir")),
-                                                                  create_arch_release_file(RootDir, Dc),
-                                                                  Dc end, Subs),
-                                         Dt end, Dirs),
+         Finals = dir_combine(dir_escape(Dirs), dir_escape(Subs)),
+         lists:foreach(fun(X) -> ok = filelib:ensure_dir(?JOIN(X, "fakedir")),
+                                 create_arch_release_file(RootDir, X)
+                       end , Finals),
          lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
          % Create css for repo
          do_repo_index_css(RootDir),         
@@ -140,10 +141,9 @@ create_repo_index_html(Source, RootDir) ->
             Target  = ?JOIN(RootDir, "index.html"),
             Repo    = filename:basename(RootDir),
             Module  = list_to_atom(Repo ++ "_index_html"),
-            %Suites  = application:get_env(debris, suites, ?DEFAULT_SUITES),
-            %Compos  = application:get_env(debris, components, ["main"]),
-            Suites  = get_conf(Repo, suites, ?DEFAULT_SUITES),
-            Compos  = get_conf(Repo, components, ["main"]),
+            Suites  = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+            Compos  = get_conf(list_to_atom(Repo), components, ["main"]),
+
             {ok, Module} = erlydtl:compile_file(Source, Module),
             Vars = get_template_vars() ++ [ {repository, Repo}
                                            ,{pubkey, Repo ++ ".asc"}

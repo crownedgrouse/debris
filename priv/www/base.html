@@ -15,9 +15,9 @@
  wget {{ url }}/{{ repository }}/{{ pubkey }} 
  sudo apt-key add {{ pubkey }} </pre></p>
     <p>Add line(s) like below to your <tt>/etc/apt/sources.list</tt> file :</p>
-    <p><pre> deb {{ url }}/{{ repository }} SUITE COMPONENTS </pre></p>
-    <p>where <tt>SUITE</tt> can be one of those values :<tt>{% for i in suites %}&nbsp;{{ i }}{% endfor %}</tt> </p>
-    <p>where <tt>COMPONENTS</tt> can be zero or more, blank separated, of those values :<tt>{% for i in components %}&nbsp;{{ i }}{% endfor %}</tt> </p>
+    <p><pre> deb {{ url }}/{{ repository }} <i>SUITE</i> <i>COMPONENTS</i> </pre></p>
+    <p>where <tt><i>SUITE</i></tt> can be one of those values :<tt>{% for i in suites %}&nbsp;{{ i }}{% endfor %}</tt> </p>
+    <p>where <tt><i>COMPONENTS</i></tt> can be zero or more, blank separated, of those values :<tt>{% for i in components %}&nbsp;{{ i }}{% endfor %}</tt> </p>
     <p></p>
     </div>
     <div class="disclaimer">
