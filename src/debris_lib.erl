@@ -7,9 +7,11 @@
 
 -define(PRINT(X), io:format("~p~n",[X])).
 
+-define(DEBUG(X), io:format("~p~n",[X]), X).
+
 -define(DEFAULT_REPO, ["debian"]).
 
--define(DEFAULT_ARCHIVES, ["stable", "testing", "unstable"]).
+-define(DEFAULT_SUITES, ["stable", "testing", "unstable"]).
 
 %% Create default repos
 % dists/stable/
@@ -61,29 +63,26 @@ init_repo(RootDir) when is_tuple(RootDir) -> {DocRoot, List} = RootDir,
 init_repo(RootDir) when is_list(RootDir) ->
          % Ensure directory
          ok = filelib:ensure_dir(?JOIN(RootDir,"fakedir")),
+         Repo = list_to_atom(filename:basename(RootDir)),
          % Create dists and pool
          Dists = ?JOIN(RootDir, "dists"),
          Pool  = ?JOIN(RootDir, "pool"),
          ok = filelib:ensure_dir(?JOIN(Dists,"fakedir")),
          ok = filelib:ensure_dir(?JOIN(Pool,"fakedir")),
-         % Create Archives (only from config file)
-         Archives = application:get_env(debris, suites, ?DEFAULT_ARCHIVES),
-         lists:foreach(fun(D) ->  ok = filelib:ensure_dir(?JOIN(?JOIN(Dists, D),"fakedir")) end,  Archives),
+         % Create Suites (only from config file)
+         Suites = get_conf(Repo, suites, ?DEFAULT_SUITES),
+         %DSuites = lists:map(fun(S) -> ?JOIN(Dists, S) end, Suites),
+         DSuites = dir_combine({dir, Dists}, dir_escape(Suites)),
          % Create Components ( default : main )
-         Components = application:get_env(debris, components, ["main"]),
-         Dirs = lists:map(fun(D) ->   [Da] = lists:map(fun(C) -> Dir = ?JOIN(?JOIN(Dists, D), C), 
-                                                                 ok = filelib:ensure_dir(?JOIN(Dir, "fakedir")), 
-                                                                 Dir end
-                                                      , Components) 
-                                     , Da end,  Archives),
-         % Create all, arch and source directories 
+         Components = get_conf(Repo, components, ["main"]),
+         Dirs = dir_combine(dir_escape(DSuites), dir_escape(Components)),
          Subs = get_subs(),
          Terminals = lists:flatmap(fun(S) -> Dt = lists:map(fun(Z) -> Dc = ?JOIN(S, Z) ,
                                                                   ok = filelib:ensure_dir(?JOIN(Dc, "fakedir")),
                                                                   create_arch_release_file(RootDir, Dc),
                                                                   Dc end, Subs),
                                          Dt end, Dirs),
-         lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Archives),
+         lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
          % Create css for repo
          do_repo_index_css(RootDir),         
          % Create index.html for repo
@@ -141,8 +140,10 @@ create_repo_index_html(Source, RootDir) ->
             Target  = ?JOIN(RootDir, "index.html"),
             Repo    = filename:basename(RootDir),
             Module  = list_to_atom(Repo ++ "_index_html"),
-            Suites  = application:get_env(debris, suites, ?DEFAULT_ARCHIVES),
-            Compos  = application:get_env(debris, components, ["main"]),
+            %Suites  = application:get_env(debris, suites, ?DEFAULT_SUITES),
+            %Compos  = application:get_env(debris, components, ["main"]),
+            Suites  = get_conf(Repo, suites, ?DEFAULT_SUITES),
+            Compos  = get_conf(Repo, components, ["main"]),
             {ok, Module} = erlydtl:compile_file(Source, Module),
             Vars = get_template_vars() ++ [ {repository, Repo}
                                            ,{pubkey, Repo ++ ".asc"}
@@ -182,18 +183,7 @@ get_docroot() -> % Use Debris Private Dir by default
 %% @doc Get the root directory of a repo (one level more than document_root)
 %% @end
 %%-------------------------------------------------------------------------
-get_rootdir() -> % Use Debris Private Dir by default
-                 %application:load(debris),
-                 %RootDir1 = case code:priv_dir(debris) of
-                 %             {error, bad_name} -> "." ;
-                 %             P -> ?JOIN(P, "www")
-                 %          end,
-                 % Get rootdir from config
-                 %case application:get_env(debris, document_root) of
-                 %   {ok, RootDir2} -> add_repo(RootDir2) ;
-                 %   undefined      -> add_repo(RootDir1)
-                 %end
-                 add_repo(get_docroot()).
+get_rootdir() -> add_repo(get_docroot()).
 
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -332,7 +322,9 @@ create_arch_release_file(RootDir, Dir) -> % Guess infos
 %  3d68e206d7faa3aded660dc0996054fe 19203165 Contents-armel.gz
 create_archive_release_file(RootDir, Dir) ->   
                    N = erlang:length(filename:split(filename:join([RootDir, "dists", Dir]))),
-                   Components = application:get_env(debris, components, ["main"]),
+                   Repo = list_to_atom(filename:basename(RootDir)),
+                   %Components = application:get_env(debris, components, ["main"]),
+                   Components = get_conf(Repo, components, ["main"]),
                    CurDir = filename:join([RootDir, "dists", Dir]),
                    {ok, FilelistRaw} = rec_list_dir(CurDir, true),
                    % Remove any existing signatures, must not be part of content
@@ -463,9 +455,10 @@ update_repo(RootDir) when is_list(RootDir) ->
                                                 ok = file:write_file(Gz, Compressed),
                                                 ok = file:rename(G, ?JOIN(filename:dirname(G), "Packages"))
                                       end, News),
-                        % Update Release file in Archives
-                        Archives = application:get_env(debris, archives, ?DEFAULT_ARCHIVES),
-                        lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Archives),
+                        % Update Release file in Suites
+                        %Suites = application:get_env(debris, suites, ?DEFAULT_SUITES),
+                        Suites = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+                        lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
                         ok.
                         
 %%-------------------------------------------------------------------------
@@ -513,7 +506,7 @@ update_packages_new(RootDir, P) when is_tuple(P)
 %% @end
 %%-------------------------------------------------------------------------
 % Lookup in dets file if .deb known  (otherwise unstable is returned)
-% Be aware if you do not use "unstable" in archives config key !
+% Be aware if you do not use "unstable" in Suites config key !
 what_archive(Repo, Deb) ->  Name = open_dets(Repo),
                       % Search Deb file as key and return archive value, otherwise "unstable"
                       case dets:lookup(Name, Deb) of
@@ -713,5 +706,48 @@ rec_list_dir([Path|Paths], FilesOnly, Acc) ->
                         false -> [Path | Acc]
                     end)
         end).
+
+%%------------------------------------------------------------------------------
+%% @doc Get configuration parameter
+%% If Repo is an atom, a search of a custom entry is done, if not found,
+%% return a global config parameter if set, otherwise Default value is returned.
+%% @end
+%%------------------------------------------------------------------------------
+get_conf(Repo, Key, Default) when is_atom (Repo) -> 
+            case application:get_env(debris, Repo) of
+                 undefined -> get_conf(atom_to_list(Repo), Key, Default) ;
+                 {ok, Val} -> proplists:get_value(Key, Val, get_conf(atom_to_list(Repo), Key, Default))
+            end;
+
+get_conf(Repo, Key, Default) -> application:get_env(debris, Key, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc Escape directories D into {dir, D}
+%% Otherwise issue with lists:flatten (all directories concatenated)
+%% @end
+%%------------------------------------------------------------------------------
+dir_escape(D) -> lists:map(fun(Dir) -> {dir, Dir} end, D).
+
+%%------------------------------------------------------------------------------
+%% @doc Combine two lists of directories
+%% First call must escape both directory lists with dir_escape/1 .
+%% @end
+%%------------------------------------------------------------------------------
+dir_combine({dir, {dir, Left}}, Right) -> dir_combine({dir, Left}, Right) ; 
+
+dir_combine(Left, {dir, {dir, Right}}) -> dir_combine(Left, {dir, Right}) ; 
+
+dir_combine({dir, Left}, {dir, Right}) -> {dir, ?JOIN(Left, Right)} ;
+
+dir_combine({dir, Left}, Right) -> lists:map(fun(R) -> dir_combine({dir, Left},  {dir, R}) end, Right) ;
+
+dir_combine(Left, {dir, Right}) -> lists:map(fun({dir, L}) -> ?JOIN(L, Right) end, Left) ;
+
+dir_combine(Left, Right) ->  Raw = lists:flatten(lists:map(fun(L) -> dir_combine(L, Right) end, Left)),
+                             lists:map(fun({dir, D}) -> D end, Raw).
+
+
+
+
 
 
