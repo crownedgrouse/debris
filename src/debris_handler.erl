@@ -16,7 +16,7 @@ run(Bridge) ->
                 cowboyxxx -> false ;
                 _      -> true
             end,
-    % Test if a file is requested, otherwise return 404 Not Found
+    % Test if a file is requested, otherwise return index.html if allowed otherwise return 404 Not Found
     {ok, DocRoot} =  application:get_env(simple_bridge, document_root),
     Url = case filename:split(sbw:path(Bridge)) of
                 ["/"]       -> "index.html" ;

@@ -285,19 +285,29 @@ get_arch_name(_)     -> "unknown".
 
 %%-------------------------------------------------------------------------
 %% @doc 
+%% For "Archive:" stanza, suite names ("stable", "testing", "unstable", …) are used in the Debian archive 
+%% while codenames ("dapper", "feisty", "gutsy", "hardy", "intrepid", …) are used in the Ubuntu archive.
 %% @end
 %%-------------------------------------------------------------------------
 create_arch_release_file(RootDir, Dir) -> % Guess infos 
                                           N = erlang:length(filename:split(RootDir)),
                                           S = filename:split(Dir),
                                           {Left, Right} = lists:split(N, S),
+                                          [Repo] = lists:nthtail((length(Left) - 1), Left),
                                           %?PRINT({Left, Right}),
                                           ["dists", Archive, Compo, ArchDir] = Right,
                                           Arch = get_arch_name(ArchDir),
+                                          Origin = get_conf(list_to_atom(Repo), origin, Repo),
+                                          Label  = get_conf(list_to_atom(Repo), label, Repo),
                                           % Create content
-                                          Data =  "Archive: " ++ Archive ++ "\n" ++
-                                                  "Origin: " ++ "" ++ "\n" ++
-                                                  "Label: " ++ "" ++ "\n" ++
+                                          ArchiveString = case Repo of
+                                                               "ubuntu" -> get_codename(Repo) ;
+                                                               _        -> Archive
+                                                          end,
+                                          Data =  "Archive: " ++ ArchiveString ++ "\n" ++
+                                                  "Origin: " ++ capfirst(Origin) ++ "\n" ++
+                                                  "Label: " ++ capfirst(Label) ++ "\n" ++ 
+                                                  experimental_extra(Archive) ++
                                                   "Component: " ++ Compo ++ "\n" ++
                                                   "Architecture: " ++ Arch ++ "\n",
                                           ok = file:write_file(?JOIN(Dir, "Release"), Data).
@@ -323,6 +333,8 @@ create_arch_release_file(RootDir, Dir) -> % Guess infos
 create_archive_release_file(RootDir, Dir) ->   
                    N = erlang:length(filename:split(filename:join([RootDir, "dists", Dir]))),
                    Repo = list_to_atom(filename:basename(RootDir)),
+                   Origin = get_conf(Repo, origin, atom_to_list(Repo)),
+                   Label  = get_conf(Repo, label, atom_to_list(Repo)),
                    %Components = application:get_env(debris, components, ["main"]),
                    Components = get_conf(Repo, components, ["main"]),
                    CurDir = filename:join([RootDir, "dists", Dir]),
@@ -345,16 +357,18 @@ create_archive_release_file(RootDir, Dir) ->
                    Tuplelist2 = lists:keysort(1, Tuplelist),
                    {S, _, _, _, _} = lists:last(Tuplelist2),
                    SizeSize = erlang:length(integer_to_list(S)),
+                   Codename = get_codename(Repo),
                    % Create content
-                   Data =  "Origin: " ++ "todo" ++ "\n" ++
-                           "Label: " ++ "todo" ++ "\n" ++
-                           "Suite: " ++ Dir ++ "\n" ++
-                           "Codename: " ++ "todo" ++ "\n" ++
+                   Data =  "Origin: " ++ capfirst(Origin) ++ "\n" ++
+                           "Label: " ++ capfirst(Label) ++ "\n" ++
+                           "Suite: " ++ Dir ++ "\n" ++ 
+                           get_codename_version(Codename) ++
+                           "Codename: " ++ Codename ++ "\n" ++
                            "Date: " ++ httpd_util:rfc1123_date(erlang:universaltime()) ++ "\n" ++
-                           "Valid-Until: " ++ valid_until() ++ "\n" ++
+                           valid_until(Dir) ++
                            "Architectures: " ++ string:join(get_archs(), " ") ++ "\n" ++
                            "Components: " ++ string:join(Components, " ") ++ "\n" ++
-                           "Description: " ++ "todo" ++ "\n" ++
+                           "Description: " ++ get_conf(Repo, description, get_description(Repo, Dir)) ++ "\n" ++
                            "MD5Sum: \n" ++ lists:flatmap(fun({Size, Rel, MD5, _, _}) -> 
                              [io_lib:format(" ~s ~"++integer_to_list(SizeSize)++"s ~s~n", 
                                             [MD5, integer_to_list(Size), Rel]) 
@@ -372,11 +386,19 @@ create_archive_release_file(RootDir, Dir) ->
                     signatures(Source).
 
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Valid until in Release file
+%% One week later seems to be a common value
 %% @end
 %%-------------------------------------------------------------------------
-
-valid_until() -> httpd_util:rfc1123_date({{2035,7,21},{9,29,42}}).
+% TODO search a valid_until_offset variable (add a repo argument ?)
+valid_until("testing")  -> valid_until(7);
+valid_until("unstable") -> valid_until(7);
+valid_until(Offset) when is_integer(Offset)
+                    -> Now     = calendar:datetime_to_gregorian_seconds({date(), time()}),
+                       Delay   = Offset * 24 * 60 * 60,
+                       NewTime = calendar:gregorian_seconds_to_datetime(Now + Delay),
+                       "Valid-Until: " ++ httpd_util:rfc1123_date( NewTime ) ++ "\n" ;
+valid_until(_) -> "" .
 
 
 %%-------------------------------------------------------------------------
@@ -722,6 +744,37 @@ get_conf(Repo, Key, Default) when is_atom (Repo) ->
 get_conf(Repo, Key, Default) -> application:get_env(debris, Key, Default).
 
 %%------------------------------------------------------------------------------
+%% @doc Get description of codename
+%% @end
+%%------------------------------------------------------------------------------
+get_description(Repo, Suite) -> Rel = case Suite of
+                                           "unstable" -> "Not Released";
+                                           "testing"  -> "Not Released";
+                                           _          -> "Released"
+                                      end,
+                                io_lib:format("~s x.y ~s - ~s", [capfirst(Repo), capfirst(Suite), Rel]).
+
+%%------------------------------------------------------------------------------
+%% @doc Get codename linked to repository
+%% @end
+%%------------------------------------------------------------------------------
+get_codename(Repo) when is_atom(Repo) ->  get_codename(atom_to_list(Repo));
+get_codename(Repo) when is_list(Repo) ->  Repo.
+
+%%------------------------------------------------------------------------------
+%% @doc Get version of codename
+%% @end
+%%------------------------------------------------------------------------------
+get_codename_version(_) -> "".
+
+%%------------------------------------------------------------------------------
+%% @doc Return NotAutomatic: Yes if suite "experimental"
+%% @end
+%%------------------------------------------------------------------------------
+experimental_extra("experimental") -> "NotAutomatic: yes\n" ;
+experimental_extra(_) -> "".
+
+%%------------------------------------------------------------------------------
 %% @doc Escape directories D into {dir, D}
 %% Otherwise issue with lists:flatten (all directories concatenated)
 %% @end
@@ -746,8 +799,15 @@ dir_combine(Left, {dir, Right}) -> lists:map(fun({dir, L}) -> ?JOIN(L, Right) en
 dir_combine(Left, Right) ->  Raw = lists:flatten(lists:map(fun(L) -> dir_combine(L, Right) end, Left)),
                              lists:map(fun({dir, D}) -> D end, Raw).
 
-
-
+%%------------------------------------------------------------------------------
+%% @doc Capitalize first character
+%% @end
+%%------------------------------------------------------------------------------
+capfirst(X) when is_atom(X) -> capfirst(atom_to_list(X)); 
+capfirst([Head | Tail]) when Head >= $a, Head =< $z ->
+    [Head + ($A - $a) | Tail];
+capfirst(Other) ->
+    Other.
 
 
 
