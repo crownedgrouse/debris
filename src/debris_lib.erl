@@ -9,7 +9,7 @@
 
 -define(DEBUG(X), io:format("~p~n",[X]), X).
 
--define(DEFAULT_REPO, ["debian"]).
+-define(DEFAULT_REPO, ["private"]).
 
 -define(DEFAULT_SUITES, ["stable", "testing", "unstable"]).
 
@@ -64,31 +64,37 @@ init_repo(RootDir) when is_list(RootDir) ->
          % Ensure directory
          ok = filelib:ensure_dir(?JOIN(RootDir,"fakedir")),
          Repo = list_to_atom(filename:basename(RootDir)),
-         % Create dists and pool
-         Dists = ?JOIN(RootDir, "dists"),
-         Pool  = ?JOIN(RootDir, "pool"),
-         ok = filelib:ensure_dir(?JOIN(Dists,"fakedir")),
-         ok = filelib:ensure_dir(?JOIN(Pool,"fakedir")),
-         % Suites
-         Suites = get_conf(Repo, suites, ?DEFAULT_SUITES),
-         DSuites = dir_combine({dir, Dists}, dir_escape(Suites)),
-         % Components 
-         Components = get_conf(Repo, components, ["main"]),
-         % Create in pool/
-         lists:foreach(fun(C) -> ok = filelib:ensure_dir(filename:join([Pool, C, "fakedir"])) end , Components),
-         % Create in dists/
-         Dirs = dir_combine(dir_escape(DSuites), dir_escape(Components)),
-         Subs = get_subs(),
-         Finals = dir_combine(dir_escape(Dirs), dir_escape(Subs)),
-         lists:foreach(fun(X) -> ok = filelib:ensure_dir(?JOIN(X, "fakedir")),
-                                 create_arch_release_file(RootDir, X)
-                       end , Finals),
-         lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
-         % Create css for repo
-         do_repo_index_css(RootDir),         
-         % Create index.html for repo
-         do_repo_index_html(RootDir),
-         ok.
+         % Test if Repo is an official repository name
+         case is_official(Repo) of
+             false ->
+                     % Create dists and pool
+                     Dists = ?JOIN(RootDir, "dists"),
+                     Pool  = ?JOIN(RootDir, "pool"),
+                     ok = filelib:ensure_dir(?JOIN(Dists,"fakedir")),
+                     ok = filelib:ensure_dir(?JOIN(Pool,"fakedir")),
+                     % Suites
+                     Suites = get_conf(Repo, suites, ?DEFAULT_SUITES),
+                     DSuites = dir_combine({dir, Dists}, dir_escape(Suites)),
+                     % Components 
+                     Components = get_conf(Repo, components, ["main"]),
+                     % Create in pool/
+                     lists:foreach(fun(C) -> ok = filelib:ensure_dir(filename:join([Pool, C, "fakedir"])) end , Components),
+                     % Create in dists/
+                     Dirs = dir_combine(dir_escape(DSuites), dir_escape(Components)),
+                     Subs = get_subs(),
+                     Finals = dir_combine(dir_escape(Dirs), dir_escape(Subs)),
+                     lists:foreach(fun(X) -> ok = filelib:ensure_dir(?JOIN(X, "fakedir")),
+                                             create_arch_release_file(RootDir, X)
+                                   end , Finals),
+                     lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
+                     % Create css for repo
+                     do_repo_index_css(RootDir),         
+                     % Create index.html for repo
+                     do_repo_index_html(RootDir), 
+                     ok;
+
+            true -> ok
+         end.
 
 %%-------------------------------------------------------------------------
 %% @doc Find which css to create in top of repo
@@ -447,41 +453,46 @@ update_repo(RootDir) when is_tuple(RootDir) -> {DocRoot, List} = RootDir,
 %% @end
 %%-------------------------------------------------------------------------
 update_repo(RootDir) when is_list(RootDir) -> 
-                        % export pubkey in document_root
-                        Repo = filename:basename(RootDir),
-                        case gen_server:call(debris_srv, signature_needed ) of
-                             false -> ok ;
-                             true  -> gen_server:call(debris_srv, {export_pubkey, ?JOIN(RootDir, Repo ++ ".asc")} )
-                        end,
-                        % List all .deb in pool/x/y/z
-                        {ok, L} = rec_list_dir(?JOIN(RootDir, "pool"), true),
-                        Debs = lists:filter(fun(D) -> case filename:extension(D) of
-                                                           ".deb" -> true ;
-                                                           _      -> false
-                                                      end
-                                            end, lists:sort(L)),
-                        % ?PRINT(Debs)
-                        % For each .deb update Packages.gz by updating Packages.new
-                        lists:foreach(fun(P) -> update_packages_new(RootDir, P) end, Debs),
+        % export pubkey in document_root
+        Repo = filename:basename(RootDir),
+        % Test if Repo is an official repository name
+        case is_official(Repo) of
+             false ->
+                case gen_server:call(debris_srv, signature_needed ) of
+                     false -> ok ;
+                     true  -> gen_server:call(debris_srv, {export_pubkey, ?JOIN(RootDir, Repo ++ ".asc")} )
+                end,
+                % List all .deb in pool/x/y/z
+                {ok, L} = rec_list_dir(?JOIN(RootDir, "pool"), true),
+                Debs = lists:filter(fun(D) -> case filename:extension(D) of
+                                                   ".deb" -> true ;
+                                                   _      -> false
+                                              end
+                                    end, lists:sort(L)),
+                % ?PRINT(Debs)
+                % For each .deb update Packages.gz by updating Packages.new
+                lists:foreach(fun(P) -> update_packages_new(RootDir, P) end, Debs),
 
-                        % Search all Packages.new and replace Packages and Packages.gz 
-                        {ok, N} = rec_list_dir(?JOIN(RootDir, "dists"), true),
-                        News = lists:filter(fun(D) -> case filename:extension(D) of
-                                                           ".new" -> true ;
-                                                           _      -> false
-                                                      end
-                                            end, lists:sort(N)),
-                        lists:foreach(fun(G) -> Gz = ?JOIN(filename:dirname(G), "Packages.gz"),
-                                                {ok, Content} = file:read_file(G),
-                                                Compressed = zlib:gzip(Content),
-                                                ok = file:write_file(Gz, Compressed),
-                                                ok = file:rename(G, ?JOIN(filename:dirname(G), "Packages"))
-                                      end, News),
-                        % Update Release file in Suites
-                        %Suites = application:get_env(debris, suites, ?DEFAULT_SUITES),
-                        Suites = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
-                        lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
-                        ok.
+                % Search all Packages.new and replace Packages and Packages.gz 
+                {ok, N} = rec_list_dir(?JOIN(RootDir, "dists"), true),
+                News = lists:filter(fun(D) -> case filename:extension(D) of
+                                                   ".new" -> true ;
+                                                   _      -> false
+                                              end
+                                    end, lists:sort(N)),
+                lists:foreach(fun(G) -> Gz = ?JOIN(filename:dirname(G), "Packages.gz"),
+                                        {ok, Content} = file:read_file(G),
+                                        Compressed = zlib:gzip(Content),
+                                        ok = file:write_file(Gz, Compressed),
+                                        ok = file:rename(G, ?JOIN(filename:dirname(G), "Packages"))
+                              end, News),
+                % Update Release file in Suites
+                %Suites = application:get_env(debris, suites, ?DEFAULT_SUITES),
+                Suites = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+                lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
+                ok;
+            true -> ok
+        end.
                         
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -808,6 +819,24 @@ capfirst([Head | Tail]) when Head >= $a, Head =< $z ->
     [Head + ($A - $a) | Tail];
 capfirst(Other) ->
     Other.
+
+%%------------------------------------------------------------------------------
+%% @doc Check official repository name
+%% @end
+%%------------------------------------------------------------------------------
+
+-ifndef(OFFICIAL).
+is_official(debian) -> true ;
+is_official(ubuntu) -> true ;
+is_official("debian") -> true ;
+is_official("ubuntu") -> true ;
+is_official(_)      -> false.
+-else.
+is_official(_)      -> false.
+-endif.
+
+
+
 
 
 

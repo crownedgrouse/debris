@@ -10,16 +10,5 @@
                   kernel,
                   stdlib
                  ]},
-  {env, [ {address, "0.0.0.0"}
-         ,{backend, inets}
-         %,{document_root, "/var/www/"} % Default to priv/www directory
-         ,{port, 8888}
-         %,{repositories, ["debian", "ubuntu"]}
-         %,{fqdn, "my.domain.org" } % Public server name exposed
-         %% Optional GPG signing 
-         %% For gpg signing to work, all gpg variables must be set 
-         %,{gpg_binary, "/usr/bin/gpg"}          % Absolute path to your gpg binary
-         %,{gpg_user, "XXXXXXXX"}                % A valid user or key identifier
-         %,{gpg_passphase_file, "/path/to/your/passphrasefile"} % MUST not be under document_root ! 
-        ]}
+  {env, [ ]}
  ]}.
