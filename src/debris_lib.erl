@@ -296,27 +296,27 @@ get_arch_name(_)     -> "unknown".
 %% @end
 %%-------------------------------------------------------------------------
 create_arch_release_file(RootDir, Dir) -> % Guess infos 
-                                          N = erlang:length(filename:split(RootDir)),
-                                          S = filename:split(Dir),
-                                          {Left, Right} = lists:split(N, S),
-                                          [Repo] = lists:nthtail((length(Left) - 1), Left),
-                                          %?PRINT({Left, Right}),
-                                          ["dists", Archive, Compo, ArchDir] = Right,
-                                          Arch = get_arch_name(ArchDir),
-                                          Origin = get_conf(list_to_atom(Repo), origin, Repo),
-                                          Label  = get_conf(list_to_atom(Repo), label, Repo),
-                                          % Create content
-                                          ArchiveString = case Repo of
-                                                               "ubuntu" -> get_codename(Repo) ;
-                                                               _        -> Archive
-                                                          end,
-                                          Data =  "Archive: " ++ ArchiveString ++ "\n" ++
-                                                  "Origin: " ++ capfirst(Origin) ++ "\n" ++
-                                                  "Label: " ++ capfirst(Label) ++ "\n" ++ 
-                                                  experimental_extra(Archive) ++
-                                                  "Component: " ++ Compo ++ "\n" ++
-                                                  "Architecture: " ++ Arch ++ "\n",
-                                          ok = file:write_file(?JOIN(Dir, "Release"), Data).
+          N = erlang:length(filename:split(RootDir)),
+          S = filename:split(Dir),
+          {Left, Right} = lists:split(N, S),
+          [Repo] = lists:nthtail((length(Left) - 1), Left),
+          %?PRINT({Left, Right}),
+          ["dists", Archive, Compo, ArchDir] = Right,
+          Arch = get_arch_name(ArchDir),
+          Origin = get_conf(list_to_atom(Repo), origin, Repo),
+          Label  = get_conf(list_to_atom(Repo), label, Repo),
+          % Create content
+          ArchiveString = case Repo of
+                               "ubuntu" -> get_codename(Repo) ;
+                               _        -> Archive
+                          end,
+          Data =  "Archive: " ++ ArchiveString ++ "\n" ++
+                  "Origin: " ++ capfirst(Origin) ++ "\n" ++
+                  "Label: " ++ capfirst(Label) ++ "\n" ++ 
+                  experimental_extra(Repo, Archive) ++
+                  "Component: " ++ Compo ++ "\n" ++
+                  "Architecture: " ++ Arch ++ "\n",
+          ok = file:write_file(?JOIN(Dir, "Release"), Data).
                                           
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -336,6 +336,7 @@ create_arch_release_file(RootDir, Dir) -> % Guess infos
 %  bdc8fa4b3f5e4a715dd0d56d176fc789 18876880 Contents-alpha.gz
 %  9469a03c94b85e010d116aeeab9614c0 19441880 Contents-amd64.gz
 %  3d68e206d7faa3aded660dc0996054fe 19203165 Contents-armel.gz
+create_archive_release_file(RootDir, Dir) when is_atom(Dir) -> create_archive_release_file(RootDir, atom_to_list(Dir)) ;   
 create_archive_release_file(RootDir, Dir) ->   
                    N = erlang:length(filename:split(filename:join([RootDir, "dists", Dir]))),
                    Repo = list_to_atom(filename:basename(RootDir)),
@@ -782,8 +783,44 @@ get_codename_version(_) -> "".
 %% @doc Return NotAutomatic: Yes if suite "experimental"
 %% @end
 %%------------------------------------------------------------------------------
-experimental_extra("experimental") -> "NotAutomatic: yes\n" ;
-experimental_extra(_) -> "".
+experimental_extra(Repo, R) when is_atom(R) -> "NotAutomatic: yes\n" ;
+experimental_extra(Repo, X) -> 
+    List = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+    Extras = get_conf(Repo, extras, []),
+    % split  X-Y 
+     case re:split(X, "[-]", [{return,list}]) of
+        [X]      -> % No dash, i.e no extra
+                    case lists:member(X, List) of
+                         true  -> % suite name is a string
+                                  "" ;
+                         false -> 
+                                  case lists:member(list_to_atom(X), List) of
+                                        true  -> experimental_extra(Repo, list_to_atom(X)) ;
+                                        false -> % ???
+                                                 ""
+                                  end
+                    end;
+        [X, R]   -> % concatenate R (possible multiple dash like 'proposed-updates')
+                    Right = string:join(R, "-"),
+                    case lists:member(X, List) of
+                         true  -> % suite name is a string
+                                  "" ;
+                         false -> Atom = list_to_atom(X),
+                                  case lists:member(Atom, List) of
+                                        true  -> experimental_extra(Repo, Atom);
+                                        false -> % Checks extras
+                                                 case lists:member(Right, Extras) of
+                                                      true  -> % Extra name is a string
+                                                               "" ;
+                                                      false -> RightAtom = list_to_atom(Right),
+                                                               case lists:member(RightAtom, Extras) of
+                                                                    true  -> experimental_extra(Repo, RightAtom);
+                                                                    false -> ""                                                                      
+                                                               end
+                                                 end
+                                  end
+                    end
+     end.
 
 %%------------------------------------------------------------------------------
 %% @doc Escape directories D into {dir, D}
