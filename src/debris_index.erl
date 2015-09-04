@@ -25,22 +25,50 @@ get_index(Name, Path, RootPath, Args) ->
                            "index.html" -> filename:dirname(Path) ;
                             _           -> Path
                 end,
+                % Sort order
+                SortRaw = case Args of
+                            [{<<"C">>,C},{<<"O">>,O}] -> {C, O} ;
+                            _                         -> {<<"N">>, <<"A">>}
+                          end, 
+                Sort = sort_keys(SortRaw),               
                 {ok, A} = Name:render([
                                         {dir, "/" ++ Dir},
                                         {parent, "/" ++ filename:dirname(Path)},
-                                        {n, 'A'},
-                                        {m, 'D'},
-                                        {s, 'D'},
-                                        {d, 'D'},
-                                        get_entries(RootPath, Path)
+                                        {n, flip(name, Sort)},
+                                        {m, flip(last_m, Sort)},
+                                        {s, flip('size', Sort)},
+                                        {d, flip(desc, Sort)},
+                                        get_entries(RootPath, Path, Sort)
                                       ]),
-                %io:format("~p~n",[A]),
+                %io:format("~p~n",[Args]),
                 A.
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
-get_entries(RootPath, Url) -> 
+sort_keys({A, B}) when is_binary(A) -> Bnew = list_to_atom(binary_to_list(B)),
+                                      case A of
+                                          <<"N">> -> {name, Bnew};
+                                          <<"M">> -> {last_m, Bnew};
+                                          <<"S">> -> {'size', Bnew};
+                                          <<"D">> -> {desc, Bnew};
+                                          _       -> {name, Bnew}
+                                      end.
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
+flip(K, {K1, O1}) when (K =:= K1) -> case O1 of
+                                            'A' -> 'D' ;
+                                            _   -> 'A'
+                                     end;
+flip(_, {_, _}) -> 'A' .
+
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
+get_entries(RootPath, Url, Sort) -> 
                      Path  = filename:join([RootPath, Url]),
                      RPath = case filelib:is_dir(Path) of
                                   true  -> Path ;
@@ -60,12 +88,29 @@ get_entries(RootPath, Url) ->
                                                     ,{url, "/" ++ filename:join([RUrl, filename:basename(H)])}
                                                     ,{'size', filelib:file_size(F)}
                                                     ,{'date', format_date(filelib:last_modified(F))}
+                                                    ,{'last_m', filelib:last_modified(F)}
                                                     ,{symbol, get_symbol(F)}
                                                     ,{'type', get_type(F)}
+                                                    ,{desc, ""}
                                                     ] end, Filenames),
-%io:format("~p ~p~n",[Path, E]),
-
-                     {entries, E}.
+                    {K, O} = Sort,
+                    S = fun(A, B) ->  % pick A, B values
+                                        {K, ValA} = lists:keyfind(K, 1, A),
+                                        {K, ValB} = lists:keyfind(K, 1, B),
+                                        case (ValA > ValB) of
+                                             false -> false ;
+                                             true  -> true
+                                        end
+                        end,
+                    %io:format("~p ~p~n",[Path, E]),
+                    Es = lists:sort(S, E),
+                    %io:format("Sort ~p~n",[Es]),
+                    Eso = case O of
+                                'D' -> lists:reverse(Es) ;
+                                _   -> Es 
+                          end,
+                    %io:format("Sort o ~p~n",[Eso]),
+                    {entries, Eso}.
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
