@@ -73,7 +73,8 @@ init_repo(RootDir) when is_list(RootDir) ->
                      ok = filelib:ensure_dir(?JOIN(Dists,"fakedir")),
                      ok = filelib:ensure_dir(?JOIN(Pool,"fakedir")),
                      % Suites
-                     Suites = get_conf(Repo, suites, ?DEFAULT_SUITES),
+                     %Suites = get_conf(Repo, suites, ?DEFAULT_SUITES),
+                     Suites  = get_all_suites(Repo),
                      DSuites = dir_combine({dir, Dists}, dir_escape(Suites)),
                      % Components 
                      Components = get_conf(Repo, components, ["main"]),
@@ -96,6 +97,15 @@ init_repo(RootDir) when is_list(RootDir) ->
             true -> ok
          end.
 
+%%-------------------------------------------------------------------------
+%% @doc Find which css to create in top of repo
+%% @end
+%%-------------------------------------------------------------------------
+get_all_suites(Repo) -> Basic = get_conf(Repo, suites, ?DEFAULT_SUITES),
+                        Extra = get_conf(Repo, extras, []),
+                        DashExtra = suite_combine({suite, "-"}, suite_escape(Extra)),
+                        Suites = suite_combine(suite_escape(tl(Basic)), suite_escape(DashExtra)),
+                        lists:delete('',Basic) ++ Suites.
 %%-------------------------------------------------------------------------
 %% @doc Find which css to create in top of repo
 %% @end
@@ -489,7 +499,8 @@ update_repo(RootDir) when is_list(RootDir) ->
                               end, News),
                 % Update Release file in Suites
                 %Suites = application:get_env(debris, suites, ?DEFAULT_SUITES),
-                Suites = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+                %Suites = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+                Suites = get_all_suites(Repo),
                 lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
                 ok;
             true -> ok
@@ -787,6 +798,7 @@ experimental_extra(Repo, R) when is_atom(R) -> "NotAutomatic: yes\n" ;
 experimental_extra(Repo, X) -> 
     List = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
     Extras = get_conf(Repo, extras, []),
+%io:format("~p~n~p~n~p", [X, List, Extras]),
     % split  X-Y 
      case re:split(X, "[-]", [{return,list}]) of
         [X]      -> % No dash, i.e no extra
@@ -800,12 +812,12 @@ experimental_extra(Repo, X) ->
                                                  ""
                                   end
                     end;
-        [X, R]   -> % concatenate R (possible multiple dash like 'proposed-updates')
+        [Y | R]   -> % concatenate R (possible multiple dash like 'proposed-updates')
                     Right = string:join(R, "-"),
-                    case lists:member(X, List) of
+                    case lists:member(Y, List) of
                          true  -> % suite name is a string
                                   "" ;
-                         false -> Atom = list_to_atom(X),
+                         false -> Atom = list_to_atom(Y),
                                   case lists:member(Atom, List) of
                                         true  -> experimental_extra(Repo, Atom);
                                         false -> % Checks extras
@@ -821,6 +833,33 @@ experimental_extra(Repo, X) ->
                                   end
                     end
      end.
+%%------------------------------------------------------------------------------
+%% @doc Escape suites S into {suite, S}
+%% Otherwise issue with lists:flatten (all suites concatenated)
+%% @end
+%%------------------------------------------------------------------------------
+suite_escape(S) -> lists:map(fun(Suite) -> case is_atom(Suite) of
+                                                true  -> {suite, atom_to_list(Suite)};
+                                                false -> {suite, Suite}
+                                           end
+                             end, S).
+%%------------------------------------------------------------------------------
+%% @doc Combine two lists of suites
+%% First call must escape both suites lists with suite_escape/1 .
+%% @end
+%%------------------------------------------------------------------------------
+suite_combine({suite, {suite, Left}}, Right) -> suite_combine({suite, Left}, Right) ; 
+
+suite_combine(Left, {suite, {suite, Right}}) -> suite_combine(Left, {suite, Right}) ; 
+
+suite_combine({suite, Left}, {suite, Right}) -> {suite, Left ++ Right} ;
+
+suite_combine({suite, Left}, Right) -> lists:map(fun(R) -> suite_combine({suite, Left},  {suite, R}) end, Right) ;
+
+suite_combine(Left, {suite, Right}) -> lists:map(fun({suite, L}) -> L ++ Right end, Left) ;
+
+suite_combine(Left, Right) ->  Raw = lists:flatten(lists:map(fun(L) -> suite_combine(L, Right) end, Left)),
+                               lists:map(fun({suite, D}) -> D end, Raw).
 
 %%------------------------------------------------------------------------------
 %% @doc Escape directories D into {dir, D}
