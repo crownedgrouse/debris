@@ -101,52 +101,57 @@ init_repo(RootDir) when is_list(RootDir) ->
 %% @doc Find which css to create in top of repo
 %% @end
 %%-------------------------------------------------------------------------
-get_all_suites(Repo) -> Basic = get_conf(Repo, suites, ?DEFAULT_SUITES),
-                        Extra = get_conf(Repo, extras, []),
+get_all_suites(Repo) when is_atom(Repo) -> get_all_suites(atom_to_list(Repo));
+
+get_all_suites(Repo) -> Basic = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+                        Extra = get_conf(list_to_atom(Repo), extras, []),
+                        Excludes = get_conf(list_to_atom(Repo), excludes, []),
                         DashExtra = suite_combine({suite, "-"}, suite_escape(Extra)),
                         Suites = suite_combine(suite_escape(tl(Basic)), suite_escape(DashExtra)),
-                        lists:delete('',Basic) ++ Suites.
+                        lists:delete('',Basic) ++ Suites -- Excludes.
 %%-------------------------------------------------------------------------
 %% @doc Find which css to create in top of repo
 %% @end
 %%-------------------------------------------------------------------------
-do_repo_index_css(RootDir)  -> % Check if there is a custom repo.css in private repo directory
-                               Repo    = filename:basename(RootDir),
-                               PrivDir = code:priv_dir(debris),
-                               RepoDir = filename:join([PrivDir, "repos", Repo]),
-                               Base    = filename:join([PrivDir, "www", "css", "base.css"]),
-                               Custom  = ?JOIN(RepoDir, Repo ++ ".css"),
-                               case filelib:is_regular(Custom) of
-                                    true  -> create_repo_index_css(Custom, RootDir) ;
-                                    false -> create_repo_index_css(Base, RootDir)
-                               end.
+do_repo_index_css(RootDir)  -> 
+           % Check if there is a custom repo.css in private repo directory
+           Repo    = filename:basename(RootDir),
+           PrivDir = code:priv_dir(debris),
+           RepoDir = filename:join([PrivDir, "repos", Repo]),
+           Base    = filename:join([PrivDir, "www", "css", "base.css"]),
+           Custom  = ?JOIN(RepoDir, Repo ++ ".css"),
+           case filelib:is_regular(Custom) of
+                true  -> create_repo_index_css(Custom, RootDir) ;
+                false -> create_repo_index_css(Base, RootDir)
+           end.
 %%-------------------------------------------------------------------------
 %% @doc Copy css
 %% @end
 %%-------------------------------------------------------------------------
 create_repo_index_css(Source, RootDir) -> 
-                               DocRoot = filename:dirname(RootDir),
-                               Repo    = filename:basename(RootDir),
-                               Dir     = filename:join([DocRoot, "css"]),
-                               ok      = filelib:ensure_dir(?JOIN(Dir, "fakedir")), 
-                               Target  = filename:join([DocRoot, "css", Repo ++ ".css"]),
-                               {ok, _} = file:copy(Source, Target).
+           DocRoot = filename:dirname(RootDir),
+           Repo    = filename:basename(RootDir),
+           Dir     = filename:join([DocRoot, "css"]),
+           ok      = filelib:ensure_dir(?JOIN(Dir, "fakedir")), 
+           Target  = filename:join([DocRoot, "css", Repo ++ ".css"]),
+           {ok, _} = file:copy(Source, Target).
 
 
 %%-------------------------------------------------------------------------
 %% @doc Find which index.html to create in top of repo
 %% @end
 %%-------------------------------------------------------------------------
-do_repo_index_html(RootDir) -> % Check if there is a custom index.html in private repo directory
-                               Repo    = filename:basename(RootDir),
-                               PrivDir = code:priv_dir(debris),
-                               RepoDir = filename:join([PrivDir, "repos", Repo]),
-                               Base    = filename:join([PrivDir, "www", "base.html"]),
-                               Custom  = ?JOIN(RepoDir, "index.html"),
-                               case filelib:is_regular(Custom) of
-                                    true  -> create_repo_index_html(Custom, RootDir) ;
-                                    false -> create_repo_index_html(Base, RootDir)
-                               end.
+do_repo_index_html(RootDir) -> 
+           % Check if there is a custom index.html in private repo directory
+           Repo    = filename:basename(RootDir),
+           PrivDir = code:priv_dir(debris),
+           RepoDir = filename:join([PrivDir, "repos", Repo]),
+           Base    = filename:join([PrivDir, "www", "base.html"]),
+           Custom  = ?JOIN(RepoDir, "index.html"),
+           case filelib:is_regular(Custom) of
+                true  -> create_repo_index_html(Custom, RootDir) ;
+                false -> create_repo_index_html(Base, RootDir)
+           end.
 
 
 %%-------------------------------------------------------------------------
@@ -157,7 +162,7 @@ create_repo_index_html(Source, RootDir) ->
             Target  = ?JOIN(RootDir, "index.html"),
             Repo    = filename:basename(RootDir),
             Module  = list_to_atom(Repo ++ "_index_html"),
-            Suites  = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
+            Suites  = get_all_suites(Repo),
             Compos  = get_conf(list_to_atom(Repo), components, ["main"]),
 
             {ok, Module} = erlydtl:compile_file(Source, Module),
@@ -348,59 +353,59 @@ create_arch_release_file(RootDir, Dir) -> % Guess infos
 %  3d68e206d7faa3aded660dc0996054fe 19203165 Contents-armel.gz
 create_archive_release_file(RootDir, Dir) when is_atom(Dir) -> create_archive_release_file(RootDir, atom_to_list(Dir)) ;   
 create_archive_release_file(RootDir, Dir) ->   
-                   N = erlang:length(filename:split(filename:join([RootDir, "dists", Dir]))),
-                   Repo = list_to_atom(filename:basename(RootDir)),
-                   Origin = get_conf(Repo, origin, atom_to_list(Repo)),
-                   Label  = get_conf(Repo, label, atom_to_list(Repo)),
-                   %Components = application:get_env(debris, components, ["main"]),
-                   Components = get_conf(Repo, components, ["main"]),
-                   CurDir = filename:join([RootDir, "dists", Dir]),
-                   {ok, FilelistRaw} = rec_list_dir(CurDir, true),
-                   % Remove any existing signatures, must not be part of content
-                   lists:foreach(fun(X) -> case filename:basename(X) of
-                                                "Release.gpg" -> file:delete(X) ;
-                                                "InRelease"   -> file:delete(X) ;
-                                                _             -> ok
-                                           end end, FilelistRaw) ,
-                   {ok, Filelist} = rec_list_dir(CurDir, true),
-                   % Size of each file
-                   Tuplelist = lists:flatmap(fun(X) -> {Left, Right} = lists:split(N , filename:split(X)),
-                                                       {ok, B} = file:read_file(X),
-                                                       M = md5sum_string(B),
-                                                       S1 = sha1sum_string(B), 
-                                                       S256 = sha256_string(B),
-                                                       [{filelib:file_size(X), filename:join(Right), M, S1, S256}] end, lists:sort(Filelist)),
-                   % Sort list and take the bigger one to know size string length
-                   Tuplelist2 = lists:keysort(1, Tuplelist),
-                   {S, _, _, _, _} = lists:last(Tuplelist2),
-                   SizeSize = erlang:length(integer_to_list(S)),
-                   Codename = get_codename(Repo),
-                   % Create content
-                   Data =  "Origin: " ++ capfirst(Origin) ++ "\n" ++
-                           "Label: " ++ capfirst(Label) ++ "\n" ++
-                           "Suite: " ++ Dir ++ "\n" ++ 
-                           get_codename_version(Codename) ++
-                           "Codename: " ++ Codename ++ "\n" ++
-                           "Date: " ++ httpd_util:rfc1123_date(erlang:universaltime()) ++ "\n" ++
-                           valid_until(Dir) ++
-                           "Architectures: " ++ string:join(get_archs(), " ") ++ "\n" ++
-                           "Components: " ++ string:join(Components, " ") ++ "\n" ++
-                           "Description: " ++ get_conf(Repo, description, get_description(Repo, Dir)) ++ "\n" ++
-                           "MD5Sum: \n" ++ lists:flatmap(fun({Size, Rel, MD5, _, _}) -> 
-                             [io_lib:format(" ~s ~"++integer_to_list(SizeSize)++"s ~s~n", 
-                                            [MD5, integer_to_list(Size), Rel]) 
-                             ]  end , Tuplelist) ++
-                           "SHA1: \n" ++ lists:flatmap(fun({Size, Rel, _, SHA1, _}) -> 
-                             [io_lib:format(" ~s ~"++integer_to_list(SizeSize)++"s ~s~n", 
-                                            [SHA1, integer_to_list(Size), Rel]) 
-                             ]  end , Tuplelist) ++
-                           "SHA256: \n" ++ lists:flatmap(fun({Size, Rel, _, _, SHA256}) -> 
-                             [io_lib:format(" ~s ~"++integer_to_list(SizeSize)++"s ~s~n", 
-                                            [SHA256, integer_to_list(Size), Rel]) 
-                             ]  end , Tuplelist),
-                    Source = ?JOIN(CurDir, "Release"),
-                    ok = file:write_file(Source, Data),
-                    signatures(Source).
+           N = erlang:length(filename:split(filename:join([RootDir, "dists", Dir]))),
+           Repo = list_to_atom(filename:basename(RootDir)),
+           Origin = get_conf(Repo, origin, atom_to_list(Repo)),
+           Label  = get_conf(Repo, label, atom_to_list(Repo)),
+           %Components = application:get_env(debris, components, ["main"]),
+           Components = get_conf(Repo, components, ["main"]),
+           CurDir = filename:join([RootDir, "dists", Dir]),
+           {ok, FilelistRaw} = rec_list_dir(CurDir, true),
+           % Remove any existing signatures, must not be part of content
+           lists:foreach(fun(X) -> case filename:basename(X) of
+                                        "Release.gpg" -> file:delete(X) ;
+                                        "InRelease"   -> file:delete(X) ;
+                                        _             -> ok
+                                   end end, FilelistRaw) ,
+           {ok, Filelist} = rec_list_dir(CurDir, true),
+           % Size of each file
+           Tuplelist = lists:flatmap(fun(X) -> {_, Right} = lists:split(N , filename:split(X)),
+                                               {ok, B} = file:read_file(X),
+                                               M = md5sum_string(B),
+                                               S1 = sha1sum_string(B), 
+                                               S256 = sha256_string(B),
+                                               [{filelib:file_size(X), filename:join(Right), M, S1, S256}] end, lists:sort(Filelist)),
+           % Sort list and take the bigger one to know size string length
+           Tuplelist2 = lists:keysort(1, Tuplelist),
+           {S, _, _, _, _} = lists:last(Tuplelist2),
+           SizeSize = erlang:length(integer_to_list(S)),
+           Codename = get_codename(Repo),
+           % Create content
+           Data =  "Origin: " ++ capfirst(Origin) ++ "\n" ++
+                   "Label: " ++ capfirst(Label) ++ "\n" ++
+                   "Suite: " ++ Dir ++ "\n" ++ 
+                   get_codename_version(Codename) ++
+                   "Codename: " ++ Codename ++ "\n" ++
+                   "Date: " ++ httpd_util:rfc1123_date(erlang:universaltime()) ++ "\n" ++
+                   valid_until(Dir) ++
+                   "Architectures: " ++ string:join(get_archs(), " ") ++ "\n" ++
+                   "Components: " ++ string:join(Components, " ") ++ "\n" ++
+                   "Description: " ++ get_conf(Repo, description, get_description(Repo, Dir)) ++ "\n" ++
+                   "MD5Sum: \n" ++ lists:flatmap(fun({Size, Rel, MD5, _, _}) -> 
+                     [io_lib:format(" ~s ~"++integer_to_list(SizeSize)++"s ~s~n", 
+                                    [MD5, integer_to_list(Size), Rel]) 
+                     ]  end , Tuplelist) ++
+                   "SHA1: \n" ++ lists:flatmap(fun({Size, Rel, _, SHA1, _}) -> 
+                     [io_lib:format(" ~s ~"++integer_to_list(SizeSize)++"s ~s~n", 
+                                    [SHA1, integer_to_list(Size), Rel]) 
+                     ]  end , Tuplelist) ++
+                   "SHA256: \n" ++ lists:flatmap(fun({Size, Rel, _, _, SHA256}) -> 
+                     [io_lib:format(" ~s ~"++integer_to_list(SizeSize)++"s ~s~n", 
+                                    [SHA256, integer_to_list(Size), Rel]) 
+                     ]  end , Tuplelist),
+            Source = ?JOIN(CurDir, "Release"),
+            ok = file:write_file(Source, Data),
+            signatures(Source).
 
 %%-------------------------------------------------------------------------
 %% @doc Valid until in Release file
@@ -498,8 +503,6 @@ update_repo(RootDir) when is_list(RootDir) ->
                                         ok = file:rename(G, ?JOIN(filename:dirname(G), "Packages"))
                               end, News),
                 % Update Release file in Suites
-                %Suites = application:get_env(debris, suites, ?DEFAULT_SUITES),
-                %Suites = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
                 Suites = get_all_suites(Repo),
                 lists:foreach(fun(D) ->  create_archive_release_file(RootDir, D) end,  Suites),
                 ok;
@@ -511,40 +514,40 @@ update_repo(RootDir) when is_list(RootDir) ->
 %% @end
 %%-------------------------------------------------------------------------
 update_packages_new(RootDir, P) when is_list(RootDir), is_list(P)
-                                -> N = erlang:length(filename:split(RootDir)),
-                                   S = filename:split(P),
-                                   {Left, Right} = lists:split(N, S),
-                                   ["pool", Compo, _, App, Deb] = Right,
-                                   %?PRINT({Compo, App, Deb, filename:join(Right)})
-                                   Repo = filename:basename(RootDir),
-                                   % Search if .deb file already known in an Archive (otherwise unstable is returned)
-                                   Archive = what_archive(Repo, Deb),
-                                   % Update Packages.new in right Archive
-                                   update_packages_new(RootDir, {Archive, Compo, App, Deb, filename:join(Right)});
+        -> N = erlang:length(filename:split(RootDir)),
+           S = filename:split(P),
+           {_, Right} = lists:split(N, S),
+           ["pool", Compo, _, App, Deb] = Right,
+           %?PRINT({Compo, App, Deb, filename:join(Right)})
+           Repo = filename:basename(RootDir),
+           % Search if .deb file already known in an Archive (otherwise unstable is returned)
+           Archive = what_archive(Repo, Deb),
+           % Update Packages.new in right Archive
+           update_packages_new(RootDir, {Archive, Compo, App, Deb, filename:join(Right)});
 
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------    
 update_packages_new(RootDir, P) when is_tuple(P) 
-                                -> {Archive, Compo, App, Deb, File} = P ,
-                                   % Get file infos
-                                   Infos = packages_gz_entry(RootDir, File),
-                                   Arch  = search_field(Infos, "Architecture"),
-                                   ArchDir = get_archdir_name(Arch),
-                                   % Compose targets
-                                   Packages = filename:join([RootDir, "dists", Archive, Compo, ArchDir, "Packages"]),
-                                   Target = filename:join([RootDir, "dists", Archive, Compo, ArchDir, "Packages.new"]),
-                                   Gz     = filename:join([RootDir, "dists", Archive, Compo, ArchDir, "Packages.gz"]),
-                                   % If .new exists and older than .gz, delete it 
-                                   case filelib:last_modified(Target) < filelib:last_modified(Gz) of
-                                        true  -> file:delete(Target);
-                                        false -> ok
-                                   end,
-                                   % Append fileinfos in .new
-                                   %?PRINT(Target),
-                                   {ok, IoDevice} = file:open(Target, [append]),
-                                   ok = file:write(IoDevice, Infos).
+        -> {Archive, Compo, _App, _Deb, File} = P ,
+           % Get file infos
+           Infos = packages_gz_entry(RootDir, File),
+           Arch  = search_field(Infos, "Architecture"),
+           ArchDir = get_archdir_name(Arch),
+           % Compose targets
+           %Packages = filename:join([RootDir, "dists", Archive, Compo, ArchDir, "Packages"]),
+           Target = filename:join([RootDir, "dists", Archive, Compo, ArchDir, "Packages.new"]),
+           Gz     = filename:join([RootDir, "dists", Archive, Compo, ArchDir, "Packages.gz"]),
+           % If .new exists and older than .gz, delete it 
+           case filelib:last_modified(Target) < filelib:last_modified(Gz) of
+                true  -> file:delete(Target);
+                false -> ok
+           end,
+           % Append fileinfos in .new
+           %?PRINT(Target),
+           {ok, IoDevice} = file:open(Target, [append]),
+           ok = file:write(IoDevice, Infos).
 
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -764,7 +767,7 @@ get_conf(Repo, Key, Default) when is_atom (Repo) ->
                  {ok, Val} -> proplists:get_value(Key, Val, get_conf(atom_to_list(Repo), Key, Default))
             end;
 
-get_conf(Repo, Key, Default) -> application:get_env(debris, Key, Default).
+get_conf(_Repo, Key, Default) -> application:get_env(debris, Key, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc Get description of codename
@@ -794,11 +797,10 @@ get_codename_version(_) -> "".
 %% @doc Return NotAutomatic: Yes if suite "experimental"
 %% @end
 %%------------------------------------------------------------------------------
-experimental_extra(Repo, R) when is_atom(R) -> "NotAutomatic: yes\n" ;
+experimental_extra(_Repo, R) when is_atom(R) -> "NotAutomatic: yes\n" ;
 experimental_extra(Repo, X) -> 
     List = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
     Extras = get_conf(Repo, extras, []),
-%io:format("~p~n~p~n~p", [X, List, Extras]),
     % split  X-Y 
      case re:split(X, "[-]", [{return,list}]) of
         [X]      -> % No dash, i.e no extra
