@@ -1,6 +1,5 @@
-![Debris' logo](https://raw.githubusercontent.com/crownedgrouse/debris/master/priv/images/debris_logo_small.jpg)
+| ![Debris' logo](https://raw.githubusercontent.com/crownedgrouse/debris/master/priv/images/debris_logo_small.jpg) | # debris |
 
-# debris
 DEBian Repositories as Internet/Internal Service
 
 
