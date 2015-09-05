@@ -1,3 +1,5 @@
+![Debris' logo](https://raw.githubusercontent.com/crownedgrouse/debris/master/priv/images/debris_logo_small.jpg)
+
 # debris
 DEBian Repository as Internet Service
 
