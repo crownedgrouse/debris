@@ -1,3 +1,30 @@
+%%%------------------------------------------------------------------------
+%%% File:      debris_index.erl
+%%% @author    Eric Pailleau <debris@crownedgrouse.com>
+%%% @copyright 2015 Eric Pailleau 
+%%% @doc  
+%%% index.html creation library
+%%% @end  
+%%% The MIT License (MIT):
+%%%
+%%% Permission is hereby granted, free of charge, to any person obtaining a copy
+%%% of this software and associated documentation files (the "Software"), to deal
+%%% in the Software without restriction, including without limitation the rights
+%%% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%%% copies of the Software, and to permit persons to whom the Software is
+%%% furnished to do so, subject to the following conditions:
+%%% 
+%%% The above copyright notice and this permission notice shall be included in all
+%%% copies or substantial portions of the Software.
+%%% 
+%%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%%% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%%% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%%% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%%% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%%% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+%%% SOFTWARE.
+%%%-------------------------------------------------------------------------
 -module(debris_index).
 
 -export([compile/2, get_index/3, get_index/4]).
@@ -5,21 +32,28 @@
 -include_lib("kernel/include/file.hrl").
 
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Compile a template and return name 
 %% @end
 %%-------------------------------------------------------------------------
+-spec compile(atom(),binary() | string() | {'dir',atom() | binary() | [atom() | [any()] | char()]} | {'file',atom() | binary() | [atom() | [any()] | char()]} | {'template',binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | [])}) -> atom().
+ 
 compile(Name, Path) -> {ok, Name} = erlydtl:compile(Path, Name),
                        Name.
 
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Render index.html, no args
 %% @end
 %%-------------------------------------------------------------------------
+-spec get_index(atom() | tuple(),[atom() | [any()] | char()],[atom() | [any()] | char()], _) -> any().
+
 get_index(Name, Path, RootPath) -> get_index(Name, Path, RootPath, []).
+
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Render index.html with args
 %% @end
 %%-------------------------------------------------------------------------
+-spec get_index(atom() | tuple(),[atom() | [any()] | char()],[atom() | [any()] | char()]) -> any().
+
 get_index(Name, Path, RootPath, Args) -> 
                 Dir = case filename:basename(Path) of
                            "index.html" -> filename:dirname(Path) ;
@@ -40,12 +74,13 @@ get_index(Name, Path, RootPath, Args) ->
                                         {d, flip(desc, Sort)},
                                         get_entries(RootPath, Path, Sort)
                                       ]),
-                %io:format("~p~n",[Args]),
                 A.
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Transcode sort keys from binary to tuple
 %% @end
 %%-------------------------------------------------------------------------
+-spec sort_keys(tuple()) -> tuple().
+
 sort_keys({A, B}) when is_binary(A) -> Bnew = list_to_atom(binary_to_list(B)),
                                       case A of
                                           <<"N">> -> {name, Bnew};
@@ -55,9 +90,12 @@ sort_keys({A, B}) when is_binary(A) -> Bnew = list_to_atom(binary_to_list(B)),
                                           _       -> {name, Bnew}
                                       end.
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Flip sort order for url links in index.html
+%%      'A' for ascending, 'D' for descending
 %% @end
 %%-------------------------------------------------------------------------
+-spec flip(atom(), {atom(), atom()}) -> atom(). 
+
 flip(K, {K1, O1}) when (K =:= K1) -> case O1 of
                                             'A' -> 'D' ;
                                             _   -> 'A'
@@ -65,9 +103,11 @@ flip(K, {K1, O1}) when (K =:= K1) -> case O1 of
 flip(_, {_, _}) -> 'A' .
 
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Return files list infos with specified sort order
 %% @end
 %%-------------------------------------------------------------------------
+-spec get_entries(list(), list(), tuple()) ->  {entries, list()}.
+
 get_entries(RootPath, Url, Sort) -> 
                      Path  = filename:join([RootPath, Url]),
                      RPath = case filelib:is_dir(Path) of
@@ -81,7 +121,6 @@ get_entries(RootPath, Url, Sort) ->
                                                 _           -> Url
                                            end
                              end,
-                     %io:format("Url = ~p~nPath = ~p~nRPath = ~p~nRUrl = ~p~n", [Url, Path, RPath, RUrl]),
                      {ok, Filenames} = file:list_dir(RPath), 
                      E = lists:map(fun(H)-> F   = filename:join([RPath, H]),
                                                     [{name, filename:basename(H)}
@@ -102,19 +141,18 @@ get_entries(RootPath, Url, Sort) ->
                                              true  -> true
                                         end
                         end,
-                    %io:format("~p ~p~n",[Path, E]),
                     Es = lists:sort(S, E),
-                    %io:format("Sort ~p~n",[Es]),
                     Eso = case O of
                                 'D' -> lists:reverse(Es) ;
                                 _   -> Es 
                           end,
-                    %io:format("Sort o ~p~n",[Eso]),
                     {entries, Eso}.
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Return html5 symbols linked to file suffixes
 %% @end
 %%-------------------------------------------------------------------------
+-spec get_symbol(list()) -> atom().
+
 get_symbol(F) -> case filelib:is_dir(F) of
                       true  -> '&angrt;' ;
                       false -> 
@@ -130,9 +168,11 @@ get_symbol(F) -> case filelib:is_dir(F) of
                                 end
                  end.
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Return html5 symbols linked to some file without suffixes
 %% @end
 %%-------------------------------------------------------------------------
+-spec get_symbol_noext(list()) -> atom().
+
 get_symbol_noext(F) -> case filename:basename(F) of
                             "README"    -> '&telrec;' ;
                             "InRelease" -> '&circledS;' ;
@@ -142,18 +182,21 @@ get_symbol_noext(F) -> case filename:basename(F) of
 
                        end.
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Format to usual format in index.html
+%% Default format to : 18-Aug-2015 03:52
 %% @end
 %%-------------------------------------------------------------------------
-% 18-Aug-2015 03:52
+-spec format_date(tuple()) -> list().
+
 format_date(D) ->  erlydtl_dateformat:format(D, "d-M-Y H:i").
+
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Return file type
 %% @end
 %%-------------------------------------------------------------------------
+-spec get_type(list()) -> atom().
+
 get_type(F) -> {ok, FileInfo} = file:read_file_info(F) ,
                 FileInfo#file_info.type .
-
- 
 
  
