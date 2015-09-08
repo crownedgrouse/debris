@@ -7,8 +7,15 @@
   {modules, []},
   {registered, []},
   {applications, [
-                  kernel,
-                  stdlib
+                   kernel
+                  ,stdlib
+                  ,simple_bridge
+                  ,erlydtl
+                  ,merl
+                  ,debbie
+                  ,swab
+                  ,edgar
+                  ,mimetypes
                  ]},
   {env, [ ]}
  ]}.

@@ -1,7 +1,7 @@
 PROJECT = debris
 
 ERLC_OPTS = +debug_info +warn_export_all +warn_export_vars +warn_shadow_vars +warn_obsolete_guard
-DEPS = simple_bridge erlydtl
+DEPS = simple_bridge eunit_formatters erlydtl merl mimetypes debbie
 
 include erlang.mk
 

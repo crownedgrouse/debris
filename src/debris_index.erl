@@ -37,7 +37,7 @@
 %%-------------------------------------------------------------------------
 -spec compile(atom(),binary() | string() | {'dir',atom() | binary() | [atom() | [any()] | char()]} | {'file',atom() | binary() | [atom() | [any()] | char()]} | {'template',binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | [])}) -> atom().
  
-compile(Name, Path) -> {ok, Name} = erlydtl:compile(Path, Name),
+compile(Name, Path) -> %{ok, Name} = erlydtl:compile(Path, Name),
                        Name.
 
 %%-------------------------------------------------------------------------
