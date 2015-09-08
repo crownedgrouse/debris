@@ -1,6 +1,6 @@
 {application, debris,
  [
-  {description, "DEBian Repository as Internet Service"},
+  {description, "DEBian Repositories as Internet/Internal Service"},
   {vsn, "0.1.0"},
   {id, "git"},
   {mod, {debris_app,[]}},

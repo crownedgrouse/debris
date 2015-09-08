@@ -1,3 +1,31 @@
+%%%------------------------------------------------------------------------
+%%% File:      debris_srv.erl
+%%% @author    Eric Pailleau <debris@crownedgrouse.com>
+%%% @copyright 2015 Eric Pailleau 
+%%% @doc  
+%%% debris' gen_server
+%%% @end  
+%%% The MIT License (MIT):
+%%%
+%%% Permission is hereby granted, free of charge, to any person obtaining a copy
+%%% of this software and associated documentation files (the "Software"), to deal
+%%% in the Software without restriction, including without limitation the rights
+%%% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%%% copies of the Software, and to permit persons to whom the Software is
+%%% furnished to do so, subject to the following conditions:
+%%% 
+%%% The above copyright notice and this permission notice shall be included in all
+%%% copies or substantial portions of the Software.
+%%% 
+%%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%%% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%%% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%%% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%%% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%%% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+%%% SOFTWARE.
+%%%-------------------------------------------------------------------------
+
 -module(debris_srv).
 
 -export([start_link/0,
@@ -12,41 +40,62 @@
 -behaviour(gen_server).
 
 -define(PRINT(X), io:format("~p~n",[X])).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 start_link() -> start_link(undefined).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 start_link(Args) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Args, []).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 init(_Args) -> {ok, _Args}.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 terminate(_Reason, _Data) -> ok.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 handle_info(_Info, State) -> {noreply, State}.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 handle_cast(Msg, State) -> {noreply, State}.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 handle_call({add, Args}, _From, State) -> 
                         DebFile = proplists:get_value(debfile, Args),
                         Component = proplists:get_value(component, Args, "main"),
@@ -72,10 +121,12 @@ handle_call({disable, Args}, _From, State) ->
                                         {reply, ok, State, hibernate};
 handle_call({delete, Args}, _From, State) -> 
                                         {reply, ok, State, hibernate};
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
 handle_call({sign_detached, Source, Target}, _From, State)-> 
         {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
         {ok, Gpg_user} = application:get_env(debris, gpg_user),
@@ -88,10 +139,12 @@ handle_call({sign_detached, Source, Target}, _From, State)->
         % Execute
         os:cmd(string:strip(binary_to_list(iolist_to_binary(IOList)), right, $\n)),
         {reply, ok, State};
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
 handle_call({sign_attached, Source, Target}, _From, State)-> 
         {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
         {ok, Gpg_user} = application:get_env(debris, gpg_user),
@@ -104,10 +157,12 @@ handle_call({sign_attached, Source, Target}, _From, State)->
         % Execute
         os:cmd(string:strip(binary_to_list(iolist_to_binary(IOList)), right, $\n)),
         {reply, ok, State};
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
 handle_call({export_pubkey, Target}, _From, State)-> 
         {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
         {ok, Gpg_user} = application:get_env(debris, gpg_user),
@@ -120,10 +175,12 @@ handle_call({export_pubkey, Target}, _From, State)->
         % Execute
         os:cmd(string:strip(binary_to_list(iolist_to_binary(IOList)), right, $\n)),
         {reply, ok, State};
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
 handle_call(signature_needed, _From, State)-> 
                 try
                       % Return cached value if exists
@@ -167,7 +224,7 @@ handle_call(signature_needed, _From, State)->
                       PP = filename:split(filename:absname(Gpg_passphase_file)),
                       case lists:prefix(DC, PP) of
                            false -> ok ;
-                           true  -> exit("gpg_passphase_file MUST not be under document_root for obvious security reason !")
+                           true  -> exit("gpg_passphase_file MUST NOT be under document_root for obvious security reason !")
                       end,
                       erlang:put(signature_needed, true),
                       throw(true)
@@ -176,14 +233,21 @@ handle_call(signature_needed, _From, State)->
                       exit:Reason -> application:stop(simple_bridge),
                                      {stop, {security, Reason}, false, State}
                 end;
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 handle_call(_, _From, State) -> {reply, {error, function_clause}, State, hibernate}.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
+
 

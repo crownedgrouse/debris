@@ -1,3 +1,31 @@
+%%%------------------------------------------------------------------------
+%%% File:      debris_lib.erl
+%%% @author    Eric Pailleau <debris@crownedgrouse.com>
+%%% @copyright 2015 Eric Pailleau 
+%%% @doc  
+%%% debris' main library
+%%% @end  
+%%% The MIT License (MIT):
+%%%
+%%% Permission is hereby granted, free of charge, to any person obtaining a copy
+%%% of this software and associated documentation files (the "Software"), to deal
+%%% in the Software without restriction, including without limitation the rights
+%%% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%%% copies of the Software, and to permit persons to whom the Software is
+%%% furnished to do so, subject to the following conditions:
+%%% 
+%%% The above copyright notice and this permission notice shall be included in all
+%%% copies or substantial portions of the Software.
+%%% 
+%%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%%% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%%% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%%% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%%% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%%% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+%%% SOFTWARE.
+%%%-------------------------------------------------------------------------
+
 -module(debris_lib).
 
 -export([extract_control/1, search_field/2, init_repo/0,init_repo/1,init_repo/2, 
@@ -41,22 +69,30 @@
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 init_repo() -> RootDir = get_rootdir(),
                init_repo(RootDir).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 init_repo(RootDir, Repo) -> PrivDir = code:priv_dir(debris),
                             RepoDir = filename:join([PrivDir, "repos", Repo]),
                             ok = filelib:ensure_dir(?JOIN(RepoDir, "fakedir")), 
                             % Attic directories for very old packages not anymore exposed - debris never remove a package !
                             ok = filelib:ensure_dir(filename:join([RepoDir, "attic", "fakedir"])),
                             init_repo(?JOIN(RootDir, Repo)).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 init_repo(RootDir) when is_tuple(RootDir) -> {DocRoot, List} = RootDir,
                                              lists:foreach(fun(R) -> init_repo(DocRoot, R) end, List);
 
@@ -101,6 +137,8 @@ init_repo(RootDir) when is_list(RootDir) ->
 %% @doc Find which css to create in top of repo
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_all_suites(Repo) when is_atom(Repo) -> get_all_suites(atom_to_list(Repo));
 
 get_all_suites(Repo) -> Basic = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
@@ -109,10 +147,13 @@ get_all_suites(Repo) -> Basic = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SU
                         DashExtra = suite_combine({suite, "-"}, suite_escape(Extra)),
                         Suites = suite_combine(suite_escape(tl(Basic)), suite_escape(DashExtra)),
                         lists:delete('',Basic) ++ Suites -- Excludes.
+
 %%-------------------------------------------------------------------------
 %% @doc Find which css to create in top of repo
 %% @end
 %%-------------------------------------------------------------------------
+
+
 do_repo_index_css(RootDir)  -> 
            % Check if there is a custom repo.css in private repo directory
            Repo    = filename:basename(RootDir),
@@ -124,10 +165,13 @@ do_repo_index_css(RootDir)  ->
                 true  -> create_repo_index_css(Custom, RootDir) ;
                 false -> create_repo_index_css(Base, RootDir)
            end.
+
 %%-------------------------------------------------------------------------
 %% @doc Copy css
 %% @end
 %%-------------------------------------------------------------------------
+
+
 create_repo_index_css(Source, RootDir) -> 
            DocRoot = filename:dirname(RootDir),
            Repo    = filename:basename(RootDir),
@@ -136,11 +180,12 @@ create_repo_index_css(Source, RootDir) ->
            Target  = filename:join([DocRoot, "css", Repo ++ ".css"]),
            {ok, _} = file:copy(Source, Target).
 
-
 %%-------------------------------------------------------------------------
 %% @doc Find which index.html to create in top of repo
 %% @end
 %%-------------------------------------------------------------------------
+
+
 do_repo_index_html(RootDir) -> 
            % Check if there is a custom index.html in private repo directory
            Repo    = filename:basename(RootDir),
@@ -153,11 +198,12 @@ do_repo_index_html(RootDir) ->
                 false -> create_repo_index_html(Base, RootDir)
            end.
 
-
 %%-------------------------------------------------------------------------
 %% @doc Create index.html in top of repo
 %% @end
 %%-------------------------------------------------------------------------
+
+
 create_repo_index_html(Source, RootDir) -> 
             Target  = ?JOIN(RootDir, "index.html"),
             Repo    = filename:basename(RootDir),
@@ -176,10 +222,13 @@ create_repo_index_html(Source, RootDir) ->
                                  ok = file:write_file(Target, HTML) ;
                  {error, Err} ->  exit("Unable to compile "++ Source ++ " due to errors : " ++ Err)
             end.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_template_vars() -> {ok, Host} = inet:gethostname(),
                        {ok, FQDN} = net_adm:dns_hostname(Host),
                         URL = "http://" ++ application:get_env(debris, fqdn, FQDN),
@@ -189,6 +238,8 @@ get_template_vars() -> {ok, Host} = inet:gethostname(),
 %% @doc Get the document_root
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_docroot() -> % Use Debris Private Dir by default
                  application:load(debris),
                  RootDir1 = case code:priv_dir(debris) of
@@ -200,26 +251,32 @@ get_docroot() -> % Use Debris Private Dir by default
                     {ok, RootDir2} -> RootDir2 ;
                     undefined      -> RootDir1
                  end.
+
 %%-------------------------------------------------------------------------
 %% @doc Get the root directory of a repo (one level more than document_root)
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_rootdir() -> add_repo(get_docroot()).
 
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 add_repo(RootDir) ->  case application:get_env(debris, repositories, "debian") of
                            "debian" -> ?JOIN(RootDir, "debian") ;
                             List    -> {RootDir, List}
                       end.
                         
-
 %%-------------------------------------------------------------------------
 %% @doc Add Deb file to the default pool
 %% @end
 %%-------------------------------------------------------------------------  
+
+
 add2pool(DebFile, Component) -> add2pool(DebFile, "debian", Component).
 
 %%-------------------------------------------------------------------------
@@ -243,18 +300,24 @@ add2pool(DebFile, Repo, Component) ->
                 file:delete(Target),
                 % Move file to pool
                 file:rename(DebFile, Target).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_subs() -> ["binary-all", "binary-amd64","binary-arm64", "binary-armel",
                "binary-armhf", "binary-hurd-i386", "binary-i386", "binary-kfreebsd-amd64",
                "binary-kfreebsd-i386", "binary-mips", "binary-mipsel", "binary-powerpc", 
                "binary-ppc64el", "binary-s390x", "binary-sparc", "source"].
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_archs() -> ["amd64","arm64", "armel",
                "armhf", "hurd-i386", "i386", "kfreebsd-amd64",
                "kfreebsd-i386", "mips", "mipsel", "powerpc", 
@@ -264,6 +327,8 @@ get_archs() -> ["amd64","arm64", "armel",
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_archdir_name("all")  -> "binary-all";
 get_archdir_name("amd64")  -> "binary-amd64";
 get_archdir_name("arm64")  -> "binary-arm64";
@@ -286,6 +351,8 @@ get_archdir_name(_)     -> "unknown".
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 get_arch_name("binary-all")  -> "all";
 get_arch_name("binary-amd64")  -> "amd64";
 get_arch_name("binary-arm64")  -> "arm64";
@@ -310,6 +377,8 @@ get_arch_name(_)     -> "unknown".
 %% while codenames ("dapper", "feisty", "gutsy", "hardy", "intrepid", …) are used in the Ubuntu archive.
 %% @end
 %%-------------------------------------------------------------------------
+
+
 create_arch_release_file(RootDir, Dir) -> % Guess infos 
           N = erlang:length(filename:split(RootDir)),
           S = filename:split(Dir),
@@ -338,19 +407,21 @@ create_arch_release_file(RootDir, Dir) -> % Guess infos
 %% @end
 %%-------------------------------------------------------------------------
 %% Release file content
-% Origin: Debian
-% Label: Debian
-% Suite: unstable
-% Codename: sid
-% Date: Sat, 14 May 2011 08:20:50 UTC
-% Valid-Until: Sat, 21 May 2011 08:20:50 UTC
-% Architectures: alpha amd64 armel hppa hurd-i386 i386 ia64 kfreebsd-amd64 kfreebsd-i386 mips mipsel powerpc s390 sparc
-% Components: main contrib non-free
-% Description: Debian x.y Unstable - Not Released
-% MD5Sum:
-%  bdc8fa4b3f5e4a715dd0d56d176fc789 18876880 Contents-alpha.gz
-%  9469a03c94b85e010d116aeeab9614c0 19441880 Contents-amd64.gz
-%  3d68e206d7faa3aded660dc0996054fe 19203165 Contents-armel.gz
+%% Origin: Debian
+%% Label: Debian
+%% Suite: unstable
+%% Codename: sid
+%% Date: Sat, 14 May 2011 08:20:50 UTC
+%% Valid-Until: Sat, 21 May 2011 08:20:50 UTC
+%% Architectures: alpha amd64 armel hppa hurd-i386 i386 ia64 kfreebsd-amd64 kfreebsd-i386 mips mipsel powerpc s390 sparc
+%% Components: main contrib non-free
+%% Description: Debian x.y Unstable - Not Released
+%% MD5Sum:
+%%  bdc8fa4b3f5e4a715dd0d56d176fc789 18876880 Contents-alpha.gz
+%%  9469a03c94b85e010d116aeeab9614c0 19441880 Contents-amd64.gz
+%%  3d68e206d7faa3aded660dc0996054fe 19203165 Contents-armel.gz
+
+
 create_archive_release_file(RootDir, Dir) when is_atom(Dir) -> create_archive_release_file(RootDir, atom_to_list(Dir)) ;   
 create_archive_release_file(RootDir, Dir) ->   
            N = erlang:length(filename:split(filename:join([RootDir, "dists", Dir]))),
@@ -413,6 +484,8 @@ create_archive_release_file(RootDir, Dir) ->
 %% @end
 %%-------------------------------------------------------------------------
 % TODO search a valid_until_offset variable (add a repo argument ?)
+
+
 valid_until("testing")  -> valid_until(7);
 valid_until("unstable") -> valid_until(7);
 valid_until(Offset) when is_integer(Offset)
@@ -422,11 +495,12 @@ valid_until(Offset) when is_integer(Offset)
                        "Valid-Until: " ++ httpd_util:rfc1123_date( NewTime ) ++ "\n" ;
 valid_until(_) -> "" .
 
-
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 signatures(Target) -> case gen_server:call(debris_srv, signature_needed ) of
                             true  -> detached_sign(Target),
                                      clear_sign(Target);
@@ -437,12 +511,16 @@ signatures(Target) -> case gen_server:call(debris_srv, signature_needed ) of
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 detached_sign(Source) -> gen_server:call(debris_srv, {sign_detached, Source, Source ++ ".gpg" }) .
 
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 clear_sign(Source)   -> gen_server:call(debris_srv, {sign_attached, Source, ?JOIN(filename:dirname(Source), "InRelease")}) .
 
 %%-------------------------------------------------------------------------
@@ -455,11 +533,16 @@ update_repo() -> RootDir = get_rootdir(),
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 update_repo(RootDir, Repo) -> update_repo(?JOIN(RootDir, Repo)).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 update_repo(RootDir) when is_tuple(RootDir) -> {DocRoot, List} = RootDir,
                                                lists:foreach(fun(R) -> update_repo(?JOIN(DocRoot,R)) end, List);
 
@@ -468,6 +551,8 @@ update_repo(RootDir) when is_tuple(RootDir) -> {DocRoot, List} = RootDir,
 %% Update de whole repo from files in pool/
 %% @end
 %%-------------------------------------------------------------------------
+
+
 update_repo(RootDir) when is_list(RootDir) -> 
         % export pubkey in document_root
         Repo = filename:basename(RootDir),
@@ -513,6 +598,8 @@ update_repo(RootDir) when is_list(RootDir) ->
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 update_packages_new(RootDir, P) when is_list(RootDir), is_list(P)
         -> N = erlang:length(filename:split(RootDir)),
            S = filename:split(P),
@@ -529,6 +616,8 @@ update_packages_new(RootDir, P) when is_list(RootDir), is_list(P)
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------    
+
+
 update_packages_new(RootDir, P) when is_tuple(P) 
         -> {Archive, Compo, _App, _Deb, File} = P ,
            % Get file infos
@@ -551,10 +640,12 @@ update_packages_new(RootDir, P) when is_tuple(P)
 
 %%-------------------------------------------------------------------------
 %% @doc 
+%% Lookup in dets file if .deb known  (otherwise unstable is returned)
+%% Be aware if you do not use "unstable" in Suites config key !
 %% @end
 %%-------------------------------------------------------------------------
-% Lookup in dets file if .deb known  (otherwise unstable is returned)
-% Be aware if you do not use "unstable" in Suites config key !
+
+
 what_archive(Repo, Deb) ->  Name = open_dets(Repo),
                       % Search Deb file as key and return archive value, otherwise "unstable"
                       case dets:lookup(Name, Deb) of
@@ -564,10 +655,13 @@ what_archive(Repo, Deb) ->  Name = open_dets(Repo),
                             [Val]      -> {_, {Archive, _Component, _Dates}} = Val,
                                            Archive
                       end.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 record_deb(Repo, Deb, {Archive, Component, Date}) -> 
                  Name = open_dets(Repo),
                  % Insert the entry
@@ -584,24 +678,32 @@ record_deb(Repo, Deb, {Archive, Component, Date}) ->
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 delete_deb(Repo, Deb) -> Name = open_dets(Repo),
                    dets:delete(Name, Deb),
                    dets:close(Name).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 insert_deb(Repo, Deb, Val) 
            when is_list(Repo)-> Name = open_dets(Repo),
                                 insert_deb(Name, Deb, Val),
                                 dets:close(Name);
 
 insert_deb(Name, Deb, Val)
-          when is_atom(Name) -> dets:insert(Name, {Deb, Val}).                
+          when is_atom(Name) -> dets:insert(Name, {Deb, Val}).           
+     
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 open_dets(Repo) ->     % Dets file must be in priv directory
                    PrivDir = case code:priv_dir(debris) of
                                     {error, bad_name} -> "." ;
@@ -611,72 +713,100 @@ open_dets(Repo) ->     % Dets file must be in priv directory
                    {ok, Name} = dets:open_file(list_to_atom(Repo), [{type, bag},
                                                           {file, Dets}]),
                    Name.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
 %% Content of dists/x/y/binary-z/ 
-% Packages.gz
-% Release 
-
+%% Packages.gz
+%% Release 
+%%
 %% Packages.gz : Concatenated control files + below info per control file
-% Filename: pool/main/0/0ad-data/0ad-data_0.0.18-1_all.deb
-% Size: 575509610
-% MD5sum: 39e848b72494d3335a54ab88a71ab8fc
-% SHA1: 9fe32480379a6c0bd4e9d52483c02e97dce6e1e2
-% SHA256: 1d349f9cd956b2f34e2bb192343b6a6cd6bb18cd465dd5c92e5ff332700811e0
+%% Filename: pool/main/0/0ad-data/0ad-data_0.0.18-1_all.deb
+%% Size: 575509610
+%% MD5sum: 39e848b72494d3335a54ab88a71ab8fc
+%% SHA1: 9fe32480379a6c0bd4e9d52483c02e97dce6e1e2
+%% SHA256: 1d349f9cd956b2f34e2bb192343b6a6cd6bb18cd465dd5c92e5ff332700811e0
+
 
 packages_gz_entry(RootDir, File) -> FilePath = filename:join(RootDir, File),
                                     binary_to_list(extract_control(FilePath)) ++ control_end(RootDir, File)++ "\n".
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 control_end(RootDir, File) ->  FilePath = filename:join(RootDir, File),
                                {ok, S} = file:read_file(FilePath),
                                filename_string(File) ++ size_string(FilePath) ++ checksums(S).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 filename_string(Filename) -> "Filename: " ++ Filename ++ "\n".
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 size_string(File) -> "Size: " ++ integer_to_list(filelib:file_size(File)) ++ "\n".
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 checksums(S) -> "MD5sum: " ++ md5sum_string(S) ++ "\n"
                 "SHA1: "   ++ sha1sum_string(S) ++ "\n"
                 "SHA256: " ++ sha256_string(S) ++ "\n".
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 md5sum_string(S) ->  hash_string(crypto:hash(md5,S)).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 sha1sum_string(S) -> hash_string(crypto:hash(sha,S)).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 sha256_string(S) -> hash_string(crypto:hash(sha256,S)).
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 hash_string(X) -> lists:flatten([io_lib:format("~2.16.0b",[N]) || N <- binary_to_list(X)]).
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 extract_control(File) ->  C = case edgar:extract(File,[memory]) of
                             {ok, [{"debian-binary   ", _},
                                   {"control.tar.gz  ", C0},
@@ -694,20 +824,24 @@ extract_control(File) ->  C = case edgar:extract(File,[memory]) of
                                         end
                           end.
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 search_field(Control, Field) -> {ok, F} = swab:sync([{grab, escape_re(Field) ++ ":(.*)"}, {trim,both}], Control),
                                 F. 
 
 % Escape '-' character for regexp
 escape_re(S) -> S. % TODO
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Return debian package name from control file
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 guess_deb_name(F) -> % Extract name, version , architecture from control file
                      Control = binary_to_list(extract_control(F)),
                      Name    = search_field(Control, "Package"),
@@ -715,10 +849,10 @@ guess_deb_name(F) -> % Extract name, version , architecture from control file
                      Archi   = search_field(Control, "Architecture"),
                      lists:flatten(Name ++ "_" ++ Version ++ "_" ++ Archi ++ ".deb").
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc List files recursively
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 -type name() :: string() | atom() | binary().
 
 -spec rec_list_dir(Dir::name()) ->
@@ -755,12 +889,14 @@ rec_list_dir([Path|Paths], FilesOnly, Acc) ->
                     end)
         end).
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Get configuration parameter
 %% If Repo is an atom, a search of a custom entry is done, if not found,
 %% return a global config parameter if set, otherwise Default value is returned.
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 get_conf(Repo, Key, Default) when is_atom (Repo) -> 
             case application:get_env(debris, Repo) of
                  undefined -> get_conf(atom_to_list(Repo), Key, Default) ;
@@ -769,10 +905,12 @@ get_conf(Repo, Key, Default) when is_atom (Repo) ->
 
 get_conf(_Repo, Key, Default) -> application:get_env(debris, Key, Default).
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Get description of codename
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 get_description(Repo, Suite) -> Rel = case Suite of
                                            "unstable" -> "Not Released";
                                            "testing"  -> "Not Released";
@@ -780,23 +918,29 @@ get_description(Repo, Suite) -> Rel = case Suite of
                                       end,
                                 io_lib:format("~s x.y ~s - ~s", [capfirst(Repo), capfirst(Suite), Rel]).
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Get codename linked to repository
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 get_codename(Repo) when is_atom(Repo) ->  get_codename(atom_to_list(Repo));
 get_codename(Repo) when is_list(Repo) ->  Repo.
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Get version of codename
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 get_codename_version(_) -> "".
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Return NotAutomatic: Yes if suite "experimental"
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 experimental_extra(_Repo, R) when is_atom(R) -> "NotAutomatic: yes\n" ;
 experimental_extra(Repo, X) -> 
     List = get_conf(list_to_atom(Repo), suites, ?DEFAULT_SUITES),
@@ -835,21 +979,27 @@ experimental_extra(Repo, X) ->
                                   end
                     end
      end.
-%%------------------------------------------------------------------------------
+
+%%-------------------------------------------------------------------------
 %% @doc Escape suites S into {suite, S}
 %% Otherwise issue with lists:flatten (all suites concatenated)
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 suite_escape(S) -> lists:map(fun(Suite) -> case is_atom(Suite) of
                                                 true  -> {suite, atom_to_list(Suite)};
                                                 false -> {suite, Suite}
                                            end
                              end, S).
-%%------------------------------------------------------------------------------
+
+%%-------------------------------------------------------------------------
 %% @doc Combine two lists of suites
 %% First call must escape both suites lists with suite_escape/1 .
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 suite_combine({suite, {suite, Left}}, Right) -> suite_combine({suite, Left}, Right) ; 
 
 suite_combine(Left, {suite, {suite, Right}}) -> suite_combine(Left, {suite, Right}) ; 
@@ -863,18 +1013,22 @@ suite_combine(Left, {suite, Right}) -> lists:map(fun({suite, L}) -> L ++ Right e
 suite_combine(Left, Right) ->  Raw = lists:flatten(lists:map(fun(L) -> suite_combine(L, Right) end, Left)),
                                lists:map(fun({suite, D}) -> D end, Raw).
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Escape directories D into {dir, D}
 %% Otherwise issue with lists:flatten (all directories concatenated)
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 dir_escape(D) -> lists:map(fun(Dir) -> {dir, Dir} end, D).
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Combine two lists of directories
 %% First call must escape both directory lists with dir_escape/1 .
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 dir_combine({dir, {dir, Left}}, Right) -> dir_combine({dir, Left}, Right) ; 
 
 dir_combine(Left, {dir, {dir, Right}}) -> dir_combine(Left, {dir, Right}) ; 
@@ -888,20 +1042,23 @@ dir_combine(Left, {dir, Right}) -> lists:map(fun({dir, L}) -> ?JOIN(L, Right) en
 dir_combine(Left, Right) ->  Raw = lists:flatten(lists:map(fun(L) -> dir_combine(L, Right) end, Left)),
                              lists:map(fun({dir, D}) -> D end, Raw).
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Capitalize first character
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
+
 capfirst(X) when is_atom(X) -> capfirst(atom_to_list(X)); 
 capfirst([Head | Tail]) when Head >= $a, Head =< $z ->
     [Head + ($A - $a) | Tail];
 capfirst(Other) ->
     Other.
 
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
 %% @doc Check official repository name
 %% @end
-%%------------------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+
 
 -ifndef(OFFICIAL).
 is_official(debian) -> true ;
@@ -912,9 +1069,4 @@ is_official(_)      -> false.
 -else.
 is_official(_)      -> false.
 -endif.
-
-
-
-
-
 

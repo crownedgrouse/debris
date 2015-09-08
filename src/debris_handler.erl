@@ -1,5 +1,34 @@
+%%%------------------------------------------------------------------------
+%%% File:      debris_handler.erl
+%%% @author    Eric Pailleau <debris@crownedgrouse.com>
+%%% @copyright 2015 Eric Pailleau 
+%%% @doc  
+%%% debris' handler for simple_bridge
+%%% @end  
+%%% The MIT License (MIT):
+%%%
+%%% Permission is hereby granted, free of charge, to any person obtaining a copy
+%%% of this software and associated documentation files (the "Software"), to deal
+%%% in the Software without restriction, including without limitation the rights
+%%% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%%% copies of the Software, and to permit persons to whom the Software is
+%%% furnished to do so, subject to the following conditions:
+%%% 
+%%% The above copyright notice and this permission notice shall be included in all
+%%% copies or substantial portions of the Software.
+%%% 
+%%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%%% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%%% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%%% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%%% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%%% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+%%% SOFTWARE.
+%%%-------------------------------------------------------------------------
 -module(debris_handler).
+
 -behaviour(simple_bridge_handler).
+
 -export([run/1,
         ws_init/1,
         ws_message/3,
@@ -7,15 +36,15 @@
         ws_terminate/3]).
 
 -define(NOTFOUND, "<html><body><h1>Not found.</h1></body></html>").
+
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Main handler entry point
 %% @end
 %%-------------------------------------------------------------------------
+
 run(Bridge) ->
-    Index = case application:get_env(debris, backend, inets) of
-                cowboyxxx -> false ;
-                _      -> true
-            end,
+    % Should index.html be created ?
+    Index = application:get_env(debris, index, true),
     % Test if a file is requested, otherwise return index.html if allowed otherwise return 404 Not Found
     {ok, DocRoot} =  application:get_env(simple_bridge, document_root),
     Url = case filename:split(sbw:path(Bridge)) of
@@ -59,30 +88,42 @@ run(Bridge) ->
                              end
                 end,
     BridgeRet:build_response().
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 ws_init(_Bridge) -> ok.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 ws_message({text, Data}, _State, _Bridge) ->
     {reply, {text, Data}};
 ws_message({binary, Data}, _State, _Bridge) ->
     {reply, {binary, Data}}.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 ws_info(Data, _Bridge, _State) ->
     Reply = {text, io_lib:format("~s", [Data])},
     {reply, Reply}.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+
+
 ws_terminate(_Reason, _Bridge, _State) ->
     ok.
 
