@@ -6,15 +6,18 @@
   {mod, {debris_app,[]}},
   {modules, []},
   {registered, []},
+  {included_applications, [simple_bridge]},
   {applications, [
                    kernel
                   ,stdlib
-                  ,simple_bridge
-                  ,erlydtl
+                  ,crypto
+                  ,eunit_formatters
                   ,merl
-                  ,debbie
-                  ,swab
+                  ,erlydtl
+                  ,inets
                   ,edgar
+                  ,swab
+                  ,debbie
                   ,mimetypes
                  ]},
   {env, [ ]}

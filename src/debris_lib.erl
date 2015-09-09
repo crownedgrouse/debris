@@ -159,7 +159,7 @@ do_repo_index_css(RootDir)  ->
            Repo    = filename:basename(RootDir),
            PrivDir = code:priv_dir(debris),
            RepoDir = filename:join([PrivDir, "repos", Repo]),
-           Base    = filename:join([PrivDir, "www", "css", "base.css"]),
+           Base    = filename:join([PrivDir, "web", "css", "base.css"]),
            Custom  = ?JOIN(RepoDir, Repo ++ ".css"),
            case filelib:is_regular(Custom) of
                 true  -> create_repo_index_css(Custom, RootDir) ;
@@ -191,7 +191,7 @@ do_repo_index_html(RootDir) ->
            Repo    = filename:basename(RootDir),
            PrivDir = code:priv_dir(debris),
            RepoDir = filename:join([PrivDir, "repos", Repo]),
-           Base    = filename:join([PrivDir, "www", "base.html"]),
+           Base    = filename:join([PrivDir, "web", "base.html"]),
            Custom  = ?JOIN(RepoDir, "index.html"),
            case filelib:is_regular(Custom) of
                 true  -> create_repo_index_html(Custom, RootDir) ;
@@ -266,8 +266,8 @@ get_rootdir() -> add_repo(get_docroot()).
 %%-------------------------------------------------------------------------
 
 
-add_repo(RootDir) ->  case application:get_env(debris, repositories, "debian") of
-                           "debian" -> ?JOIN(RootDir, "debian") ;
+add_repo(RootDir) ->  case application:get_env(debris, repositories, "private") of
+                           "private" -> ?JOIN(RootDir, "private") ;
                             List    -> {RootDir, List}
                       end.
                         

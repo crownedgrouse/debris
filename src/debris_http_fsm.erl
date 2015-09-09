@@ -66,7 +66,7 @@ init(_) ->
            none -> ignore ;
            _    -> 
                     % Override simple_bridge config variables
-                    ok = application:load(simple_bridge),
+                    application:load(simple_bridge),
                     lists:foreach(fun({Par, Val}) -> ok = application:set_env(simple_bridge, Par, Val, [{persistent, true}]) end,
                                 [{address, Address}, 
                                  {port, Port}, 

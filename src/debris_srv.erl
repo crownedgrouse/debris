@@ -64,7 +64,9 @@ start_link(Args) ->
 %%-------------------------------------------------------------------------
 
 
-init(_Args) -> {ok, _Args}.
+init(_Args) ->  % Signal to debris_app that he can continue
+                debris_app ! debris_srv, 
+                {ok, _Args}.
 
 %%-------------------------------------------------------------------------
 %% @doc 
