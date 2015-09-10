@@ -11,3 +11,4 @@ erl_crash.dump
 edoc-info
 *.css
 ebin
+backend.mk

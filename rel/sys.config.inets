@@ -1,0 +1,7 @@
+[
+{debris,
+	[ {address, "0.0.0.0"}
+         ,{backend, inets}
+         ,{port, 8888}
+        ]}
+].
