@@ -28,8 +28,8 @@
 
 -module(debris_lib).
 
--export([extract_control/1, search_field/2, init_repo/0,init_repo/1,init_repo/2, 
-         update_repo/0, update_repo/1, update_repo/2, add2pool/2, add2pool/3]).
+-export([extract_control/1, search_field/2, init_repo/0,init_repo/1,init_repo/2, get_conf/3,
+         update_repo/0, update_repo/1, update_repo/2, add2pool/2, add2pool/3, get_rootdir/0]).
 
 -define(JOIN(X,Y), filename:join(X, Y)).
 
@@ -390,9 +390,10 @@ create_arch_release_file(RootDir, Dir) -> % Guess infos
           Origin = get_conf(list_to_atom(Repo), origin, Repo),
           Label  = get_conf(list_to_atom(Repo), label, Repo),
           % Create content
-          ArchiveString = case Repo of
-                               "ubuntu" -> get_codename(Repo) ;
-                               _        -> Archive
+          TypeRepo = get_conf(list_to_atom(Repo), mode, 'd'),
+          ArchiveString = case TypeRepo of
+                               'u' -> get_codename(Repo, Archive) ;
+                               _   -> Archive
                           end,
           Data =  "Archive: " ++ ArchiveString ++ "\n" ++
                   "Origin: " ++ capfirst(Origin) ++ "\n" ++
@@ -450,7 +451,7 @@ create_archive_release_file(RootDir, Dir) ->
            Tuplelist2 = lists:keysort(1, Tuplelist),
            {S, _, _, _, _} = lists:last(Tuplelist2),
            SizeSize = erlang:length(integer_to_list(S)),
-           Codename = get_codename(Repo),
+           Codename = get_codename(Repo, Dir),
            % Create content
            Data =  "Origin: " ++ capfirst(Origin) ++ "\n" ++
                    "Label: " ++ capfirst(Label) ++ "\n" ++
@@ -926,8 +927,8 @@ get_description(Repo, Suite) -> Rel = case Suite of
 %%-------------------------------------------------------------------------
 
 
-get_codename(Repo) when is_atom(Repo) ->  get_codename(atom_to_list(Repo));
-get_codename(Repo) when is_list(Repo) ->  Repo.
+get_codename(Repo, Suite) when is_atom(Repo) ->  get_codename(atom_to_list(Repo), Suite);
+get_codename(Repo, Suite) when is_list(Repo) ->  Suite.
 
 %%-------------------------------------------------------------------------
 %% @doc Get version of codename

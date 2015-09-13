@@ -10,7 +10,7 @@
          <th size="20%"><a href="?C=N;O={{ n }}"><tt>Name</tt></a></th>
          <th size="10%" align="center"><a href="?C=M;O={{ m }}"><tt>Last modified</tt></a></th>
          <th size="5%"><a href="?C=S;O={{ s }}"><tt>Size</tt></a></th>
-         <th size="10%"><a href="?C=D;O={{ d }}"><tt>Description</tt></a></th>
+         <th size="10%">&nbsp;&nbsp;<a href="?C=D;O={{ d }}"><tt>Description</tt></a></th>
          </tr>
     <hr>
          <tr align="left" width="50%">
@@ -18,15 +18,15 @@
          <td size="20%"><a href="{{ parent }}"><tt>Parent Directory</tt></a></td>
          <td size="10%"><tt></tt></td>
          <td size="5%"><tt></tt></td>
-         <td size="10%"><tt>-</tt></td>
+         <td size="10%">&nbsp;&nbsp;<tt>-</tt></td>
 
     {% for i in entries %}
          <tr align="left" width="50%">
          <td size="5%" class="{{ i.type }}">{{ i.symbol }}</td>
          <td size="20%"><a href="{{ i.url }}"><tt>{{ i.name }}{% if i.type == 'directory' %}/{% endif %}</tt></a></td>
          <td size="10%">&nbsp;&nbsp;<tt>{{ i.date }}</tt>&nbsp;&nbsp;</td>
-         <td size="5%"><tt>{% if i.type != 'directory' %}{{ i.size|filesizeformat }}{% else %}-{% endif %}</tt></td>
-         <td size="10%"><tt></tt></td>  
+         <td size="5%"><tt>{% if i.type != 'directory' and i.type != 'symlink' %}{{ i.size|filesizeformat }}{% else %}-{% endif %}</tt></td>
+         <td size="10%">&nbsp;&nbsp;<tt>{{ i.desc }}</tt></td>  
          </tr>                           
     {% endfor %}
     </table>

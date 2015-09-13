@@ -44,7 +44,7 @@ compile(Name, Path) -> {ok, Name} = erlydtl:compile_file(Path, Name, [{out_dir, 
 %% @doc Render index.html, no args
 %% @end
 %%-------------------------------------------------------------------------
--spec get_index(atom() | tuple(),[atom() | [any()] | char()],[atom() | [any()] | char()], _) -> any().
+-spec get_index(atom() | tuple(), [atom() | [any()] | char()], [atom() | [any()] | char()]) -> any().
 
 get_index(Name, Path, RootPath) -> get_index(Name, Path, RootPath, []).
 
@@ -52,7 +52,7 @@ get_index(Name, Path, RootPath) -> get_index(Name, Path, RootPath, []).
 %% @doc Render index.html with args
 %% @end
 %%-------------------------------------------------------------------------
--spec get_index(atom() | tuple(),[atom() | [any()] | char()],[atom() | [any()] | char()]) -> any().
+-spec get_index(atom() | tuple(), [atom() | [any()] | char()], [atom() | [any()] | char()], _) -> any().
 
 get_index(Name, Path, RootPath, Args) -> 
                 Dir = case filename:basename(Path) of
@@ -122,15 +122,16 @@ get_entries(RootPath, Url, Sort) ->
                                            end
                              end,
                      {ok, Filenames} = file:list_dir(RPath), 
-                     E = lists:map(fun(H)-> F   = filename:join([RPath, H]),
+                     E = lists:map(fun(H)-> F = filename:join([RPath, H]),
+                                            T = get_type(F),
                                                     [{name, filename:basename(H)}
                                                     ,{url, "/" ++ filename:join([RUrl, filename:basename(H)])}
                                                     ,{'size', filelib:file_size(F)}
                                                     ,{'date', format_date(filelib:last_modified(F))}
                                                     ,{'last_m', filelib:last_modified(F)}
                                                     ,{symbol, get_symbol(F)}
-                                                    ,{'type', get_type(F)}
-                                                    ,{desc, ""}
+                                                    ,{'type', T}
+                                                    ,{desc, get_desc(F, T)}
                                                     ] end, Filenames),
                     {K, O} = Sort,
                     S = fun(A, B) ->  % pick A, B values
@@ -196,7 +197,38 @@ format_date(D) ->  erlydtl_dateformat:format(D, "d-M-Y H:i").
 %%-------------------------------------------------------------------------
 -spec get_type(list()) -> atom().
 
-get_type(F) -> {ok, FileInfo} = file:read_file_info(F) ,
+get_type(F) -> {ok, FileInfo} = file:read_link_info(F) ,
                 FileInfo#file_info.type .
+
+%%-------------------------------------------------------------------------
+%% @doc Return file description
+%%      It type is directory : Describe version linked to suite
+%%      If type is symlink   : Describe suite linked to codename
+%% @end
+%%-------------------------------------------------------------------------
+-spec get_desc(list(), atom()) -> list().
+
+% T can be device | directory | other | regular | symlink
+get_desc(F, T) when (T =:= directory) ->           
+               N = erlang:length(filename:split(debris_lib:get_rootdir())),
+               S = filename:split(F),
+               {Left, Right} = lists:split(N, S),
+               [Repo] = lists:nthtail((length(Left) - 1), Left),
+               % Is this directory in suite list ?
+               D = filename:basename(F),
+               case lists:member(D, debris_lib:get_conf(list_to_atom(Repo), suites, "")) of
+                   false -> "" ;
+                   true  -> % Search info on this suite TODO
+                            "todo"
+               end;
+
+get_desc(F, T) when (T =:= symlink) -> 
+               case file:read_link(F) of
+                    {ok, Dir}  -> filename:basename(Dir) ;
+                    {error, _} -> "" 
+               end;
+
+get_desc(F, T) -> "".
+
 
  
