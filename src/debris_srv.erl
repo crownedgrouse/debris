@@ -93,17 +93,25 @@ handle_info(_Info, State) -> {noreply, State}.
 handle_cast(Msg, State) -> {noreply, State}.
 
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Debris' gen_server call handling
 %% @end
 %%-------------------------------------------------------------------------
+-spec handle_call({delete, list(), list() | {version, list()} | {codename, list()} }
+                  | _
+                 , _, _) -> tuple().
 
+%%-------------------------------------------------------------------------
+%% Package addition
+%%-------------------------------------------------------------------------
 
+%% Add but do not update repo (usefull when needing to add many packages)
 handle_call({add, Args}, _From, State) -> 
                         DebFile = proplists:get_value(debfile, Args),
                         Component = proplists:get_value(component, Args, "main"),
                         Rep  = debris_lib:add2pool(DebFile, Component),
                         {reply, Rep, State, hibernate};
 
+%% Add and update repo (use for a single addition or last addition of many package)
 handle_call({add_update, Args}, _From, State) -> 
                         DebFile = proplists:get_value(debfile, Args),
                         Component = proplists:get_value(component, Args, "main"),
@@ -111,28 +119,57 @@ handle_call({add_update, Args}, _From, State) ->
                         Rep = debris_lib:update_repo(),
                         {reply, Rep, State, hibernate};
 
+%%-------------------------------------------------------------------------
+%% Repository update
+%%-------------------------------------------------------------------------
+
 handle_call(update, _From, State) -> 
                         Rep = debris_lib:update_repo(),
                         {reply, Rep, State, hibernate};
 
+%%-------------------------------------------------------------------------
+%%
+%%-------------------------------------------------------------------------
+
 handle_call({modify, Args}, _From, State) -> 
-                                        {reply, ok, State, hibernate};
-handle_call({enable, Args}, _From, State) -> 
-                                        {reply, ok, State, hibernate};
-handle_call({disable, Args}, _From, State) -> 
-                                        {reply, ok, State, hibernate};
-handle_call({delete, Args}, _From, State) -> 
-                                        {reply, ok, State, hibernate};
+            {reply, ok, State, hibernate};
 
 %%-------------------------------------------------------------------------
-%% @doc 
-%% @end
+%% Enable / Disable HTTP access
+%%    Start / Stop http layer, but not package management
+%%    Usefull when many modification have to be done and 
+%%    can result in inconsistencies for clients.
+%%    TODO : instead stop http, sending a 'Under maintenance' page ?
+%% 
 %%-------------------------------------------------------------------------
 
-handle_call({sign_detached, Source, Target}, _From, State)-> 
-        {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
-        {ok, Gpg_user} = application:get_env(debris, gpg_user),
-        {ok, Gpg_passphase_file} = application:get_env(debris, gpg_passphase_file),
+handle_call({enable, http}, _From, State) -> 
+            {reply, ok, State, hibernate};
+handle_call({disable, http}, _From, State) -> 
+            {reply, ok, State, hibernate};
+
+%%-------------------------------------------------------------------------
+%% Delete entry in dets' repo
+%%    Any entry, either package, version or codename.
+%%      Delete version only if you know what your are doing !
+%%-------------------------------------------------------------------------
+
+handle_call({delete, Repo, Key}, _From, State) -> 
+            debris_lib:delete_deb(Repo, Key),
+            {reply, ok, State, hibernate};
+
+%%-------------------------------------------------------------------------
+%% Sign detached
+%%-------------------------------------------------------------------------
+
+handle_call({sign_detached, Repo, Source, Target}, _From, State)-> 
+        RepoA = case is_atom(Repo) of
+                     true  -> Repo ;
+                     false -> list_to_atom(Repo)
+                end,
+        Gpg_binary         = debris_lib:get_conf(RepoA, gpg_binary, "echo"),
+        Gpg_user           = debris_lib:get_conf(RepoA, gpg_user, ""),
+        Gpg_passphase_file = debris_lib:get_conf(RepoA, gpg_passphase_file, ""),
         Vars = [{gpg_binary, Gpg_binary}, 
                 {gpg_user, Gpg_user}, 
                 {gpg_passphase_file,Gpg_passphase_file},
@@ -143,14 +180,17 @@ handle_call({sign_detached, Source, Target}, _From, State)->
         {reply, ok, State};
 
 %%-------------------------------------------------------------------------
-%% @doc 
-%% @end
+%% Sign attached
 %%-------------------------------------------------------------------------
 
-handle_call({sign_attached, Source, Target}, _From, State)-> 
-        {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
-        {ok, Gpg_user} = application:get_env(debris, gpg_user),
-        {ok, Gpg_passphase_file} = application:get_env(debris, gpg_passphase_file),
+handle_call({sign_attached, Repo, Source, Target}, _From, State)-> 
+        RepoA = case is_atom(Repo) of
+                     true  -> Repo ;
+                     false -> list_to_atom(Repo)
+                end,
+        Gpg_binary         = debris_lib:get_conf(RepoA, gpg_binary, "echo"),
+        Gpg_user           = debris_lib:get_conf(RepoA, gpg_user, ""),
+        Gpg_passphase_file = debris_lib:get_conf(RepoA, gpg_passphase_file, ""),
         Vars = [{gpg_binary, Gpg_binary}, 
                 {gpg_user, Gpg_user}, 
                 {gpg_passphase_file,Gpg_passphase_file},
@@ -161,14 +201,17 @@ handle_call({sign_attached, Source, Target}, _From, State)->
         {reply, ok, State};
 
 %%-------------------------------------------------------------------------
-%% @doc 
-%% @end
+%% Export GPG public key
 %%-------------------------------------------------------------------------
 
-handle_call({export_pubkey, Target}, _From, State)-> 
-        {ok, Gpg_binary} = application:get_env(debris, gpg_binary),
-        {ok, Gpg_user} = application:get_env(debris, gpg_user),
-        {ok, Gpg_passphase_file} = application:get_env(debris, gpg_passphase_file),
+handle_call({export_pubkey, Repo, Target}, _From, State)-> 
+        RepoA = case is_atom(Repo) of
+                     true  -> Repo ;
+                     false -> list_to_atom(Repo)
+                end,
+        Gpg_binary         = debris_lib:get_conf(RepoA, gpg_binary, "echo"),
+        Gpg_user           = debris_lib:get_conf(RepoA, gpg_user, ""),
+        Gpg_passphase_file = debris_lib:get_conf(RepoA, gpg_passphase_file, ""),
         Vars = [{gpg_binary, Gpg_binary}, 
                 {gpg_user, Gpg_user}, 
                 {gpg_passphase_file,Gpg_passphase_file},
@@ -179,8 +222,9 @@ handle_call({export_pubkey, Target}, _From, State)->
         {reply, ok, State};
 
 %%-------------------------------------------------------------------------
-%% @doc 
-%% @end
+%% Check if GPG signature is needed in repository
+%%      A cache is used for performance.
+%%      Cache is cleared each time current process restart.
 %%-------------------------------------------------------------------------
 
 handle_call(signature_needed, _From, State)-> 
@@ -237,15 +281,13 @@ handle_call(signature_needed, _From, State)->
                 end;
 
 %%-------------------------------------------------------------------------
-%% @doc 
-%% @end
+%% Fallback
 %%-------------------------------------------------------------------------
-
 
 handle_call(_, _From, State) -> {reply, {error, function_clause}, State, hibernate}.
 
 %%-------------------------------------------------------------------------
-%% @doc 
+%% @doc Code change
 %% @end
 %%-------------------------------------------------------------------------
 

@@ -476,7 +476,7 @@ create_archive_release_file(RootDir, Dir) ->
                      ]  end , Tuplelist),
             Source = ?JOIN(CurDir, "Release"),
             ok = file:write_file(Source, Data),
-            signatures(Source).
+            signatures(Repo, Source).
 
 %%-------------------------------------------------------------------------
 %% @doc Valid until in Release file
@@ -501,11 +501,11 @@ valid_until(_) -> "" .
 %%-------------------------------------------------------------------------
 
 
-signatures(Target) -> case gen_server:call(debris_srv, signature_needed ) of
-                            true  -> detached_sign(Target),
-                                     clear_sign(Target);
-                            false -> ok
-                      end.
+signatures(Repo, Target) -> case gen_server:call(debris_srv, signature_needed ) of
+                                true  -> detached_sign(Repo, Target),
+                                         clear_sign(Repo, Target);
+                                false -> ok
+                            end.
 
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -513,7 +513,8 @@ signatures(Target) -> case gen_server:call(debris_srv, signature_needed ) of
 %%-------------------------------------------------------------------------
 
 
-detached_sign(Source) -> gen_server:call(debris_srv, {sign_detached, Source, Source ++ ".gpg" }) .
+detached_sign(Repo,Source) -> 
+        gen_server:call(debris_srv, {sign_detached, Repo, Source, Source ++ ".gpg" }) .
 
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -521,7 +522,8 @@ detached_sign(Source) -> gen_server:call(debris_srv, {sign_detached, Source, Sou
 %%-------------------------------------------------------------------------
 
 
-clear_sign(Source)   -> gen_server:call(debris_srv, {sign_attached, Source, ?JOIN(filename:dirname(Source), "InRelease")}) .
+clear_sign(Repo, Source) -> 
+        gen_server:call(debris_srv, {sign_attached, Repo, Source, ?JOIN(filename:dirname(Source), "InRelease")}) .
 
 %%-------------------------------------------------------------------------
 %% @doc 
@@ -561,7 +563,7 @@ update_repo(RootDir) when is_list(RootDir) ->
              false ->
                 case gen_server:call(debris_srv, signature_needed ) of
                      false -> ok ;
-                     true  -> gen_server:call(debris_srv, {export_pubkey, ?JOIN(RootDir, Repo ++ ".asc")} )
+                     true  -> gen_server:call(debris_srv, {export_pubkey, Repo, ?JOIN(RootDir, Repo ++ ".asc")} )
                 end,
                 % List all .deb in pool/x/y/z
                 {ok, L} = rec_list_dir(?JOIN(RootDir, "pool"), true),
