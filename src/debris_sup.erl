@@ -53,6 +53,7 @@ init([]) ->
 	Procs = [
                {debris_srv, {debris_srv, start_link, []}, permanent, brutal_kill, worker, [debris_srv]}
               ,{debris_http_fsm, {debris_http_fsm, start_link, []}, permanent, brutal_kill, worker, [debris_http_fsm]}
+              ,{debris_ssh_fsm, {debris_ssh_fsm, start_link, []}, permanent, brutal_kill, worker, [debris_ssh_fsm]}
             ],
 	{ok, {{one_for_one, 1, 5}, Procs}}.
 

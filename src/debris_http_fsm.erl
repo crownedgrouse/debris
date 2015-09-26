@@ -61,6 +61,8 @@ init(_) ->
     DocRoot       = application:get_env(debris, document_root, DefRootDir),
     ok            = filelib:ensure_dir(filename:join(DocRoot, "fakedir")),
     Backend       = application:get_env(debris, backend, inets),
+    %Statics       = application:get_env(debris, static_paths, []),
+    %Statics = application:get_env(debris, cowboy_dispatch, []),
 
     Ret = case Backend of
            none -> ignore ;
@@ -72,6 +74,7 @@ init(_) ->
                                  {port, Port}, 
                                  {document_root, DocRoot}, 
                                  {backend, Backend}, 
+                                 %{static_paths, Statics}, 
                                  {handler, debris_handler}]),
                     ok = application:start(simple_bridge), 
                     {ok, http_start, #http{ backend=Backend
@@ -82,26 +85,26 @@ init(_) ->
     Ret.
 
 %%-------------------------------------------------------------------------
-%% @doc Start http backend
-%% @end
-%%-------------------------------------------------------------------------
-
-
-http_start(http_stop, StateData) -> 
-                % Start
-                ok = application:stop(simple_bridge), 
-                {ok, http_stop, StateData}.
-
-%%-------------------------------------------------------------------------
 %% @doc Stop http backend
 %% @end
 %%-------------------------------------------------------------------------
 
 
-http_stop(http_start, StateData) -> 
+http_start(http_stop, StateData) -> 
                 % Stop
+                ok = application:stop(simple_bridge), 
+                {next_state, http_stop, StateData}.
+
+%%-------------------------------------------------------------------------
+%% @doc Start http backend
+%% @end
+%%-------------------------------------------------------------------------
+
+
+http_stop(http_start, StateData) -> 
+                % Start
                 ok = application:start(simple_bridge), 
-                {ok, http_start, StateData}.
+                {next_state, http_start, StateData}.
 
 %%-------------------------------------------------------------------------
 %% @doc 

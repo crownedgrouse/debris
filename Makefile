@@ -3,7 +3,7 @@ PROJECT = debris
 # Compile options
 ERLC_OPTS = +debug_info +warn_export_all +warn_export_vars +warn_shadow_vars +warn_obsolete_guard
 # Common deps for all backends
-DEPS = simple_bridge eunit_formatters erlydtl merl mimetypes debbie
+DEPS = simple_bridge eunit_formatters erlydtl debbie  
 
 # Default backend
 BACKEND=inets
