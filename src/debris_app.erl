@@ -32,6 +32,10 @@
 -export([stop/1]).
 
 start(_Type, _Args) ->
+    % Replace admin_passwd by its SHA256 hash
+    application:load(debris),
+    ok = application:set_env(debris, admin_passwd, debris_lib:sha256_string(application:get_env(debris, admin_passwd,"")), [{persistent, true}]),
+    % Register
     erlang:register(debris_app, self()),
 	Ret = debris_sup:start_link(),
     % init and Update repo 

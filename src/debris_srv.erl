@@ -99,6 +99,14 @@ handle_cast(Msg, State) -> {noreply, State}.
 -spec handle_call({delete, list(), list() | {version, list()} | {codename, list()} }
                   | _
                  , _, _) -> tuple().
+%%-------------------------------------------------------------------------
+%% Administration
+%%-------------------------------------------------------------------------
+
+%% Set admin password (once). Will be compared to hash every time it is needed
+handle_call({admin_passwd, Passwd}, {From, _}, State) -> 
+        erlang:put(admin_passwd, debris_lib:sha256_string(Passwd)),
+        {reply, ok, State};
 
 %%-------------------------------------------------------------------------
 %% Package addition
