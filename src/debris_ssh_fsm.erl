@@ -75,7 +75,11 @@ ssh_stop(ssh_start, StateData) ->
                 undefined -> Ref= [], ssh_stop ;
                 {ok, true} -> 
                        ssh:start(),
-                       SDir = application:get_env(debris, ssh_system_dir, filename:join(code:priv_dir(debris),"etc/ssh")),
+                       SDir = case os:getenv("HOME") of
+                                false   -> application:get_env(debris, ssh_system_dir, filename:join(code:priv_dir(debris),"etc/ssh")) ;
+                                "/root" -> application:get_env(debris, ssh_system_dir, "/etc/ssh") ;
+                                Home  -> application:get_env(debris, ssh_system_dir, filename:join(Home, ".debris/etc/ssh"))
+                              end,
                        %
                        application:set_env(stdlib, shell_catch_exception, false),
                        application:set_env(stdlib, restricted_shell, debris_restshell),
