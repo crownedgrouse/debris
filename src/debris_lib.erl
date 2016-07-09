@@ -30,7 +30,7 @@
 
 -export([extract_control/1, search_field/2, init_repo/0,init_repo/1,init_repo/2, get_conf/3,
          update_repo/0, update_repo/1, update_repo/2, add2pool/2, add2pool/3, get_rootdir/0,
-         sha256_string/1]).
+         sha256_string/1,open_dets/1]).
 
 -define(JOIN(X,Y), filename:join(X, Y)).
 

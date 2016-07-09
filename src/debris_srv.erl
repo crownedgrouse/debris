@@ -41,6 +41,17 @@
 
 -define(PRINT(X), io:format("~p~n",[X])).
 
+check_admin_password(P, Seed) -> 
+		{ok, AdminPasswdHash} = application:get_env(debris, admin_passwd) ,		
+		Target = debris_lib:sha256_string(AdminPasswdHash ++ integer_to_list(Seed)),
+%erlang:display(AdminPasswdHash),
+%erlang:display({P, Seed}),
+%erlang:display(Target),
+		case (Target == P) of
+			true -> true ;
+			_    -> false
+		end.
+
 %%-------------------------------------------------------------------------
 %% @doc 
 %% @end
@@ -65,6 +76,7 @@ start_link(Args) ->
 
 
 init(_Args) ->  % Signal to debris_app that he can continue
+			    global:register_name(debris_srv, self()),
                 debris_app ! debris_srv, 
                 {ok, _Args}.
 
@@ -88,7 +100,16 @@ handle_info(_Info, State) -> {noreply, State}.
 %% @doc 
 %% @end
 %%-------------------------------------------------------------------------
+handle_cast({permit, P, Seed, '_', R, A, Perm}, State)-> 
+		Name = debris_lib:open_dets(R),
+		Users = dets:match(Name, {{user,'$1'},'_','_'}),
+		dets:close(Name),
+		lists:foreach(fun([U]) ->  gen_server:cast(self(), {permit, P, Seed, U, R, A, Perm}) end, Users),
+		{noreply, State};		
 
+handle_cast({permit, P, Seed, U, R, A, Perm}, State)-> 
+		permit(P, Seed, U, R, A, Perm),
+		{noreply, State};
 
 handle_cast(Msg, State) -> {noreply, State}.
 
@@ -289,6 +310,38 @@ handle_call(signature_needed, _From, State)->
                 end;
 
 %%-------------------------------------------------------------------------
+%% Manage users access and rights
+%%-------------------------------------------------------------------------
+% Loop over each repository
+handle_call({permit, P, Seed, U, '_', A, Perm}, _From, State)-> 
+		Repos = application:get_env(debris, repositories, []),
+		lists:foreach(fun(R) ->  gen_server:cast(self(), {permit, P, Seed, U, R, A, Perm}) end, Repos),
+		{reply, true, State};
+% Loop over each user of a repository
+handle_call({permit, P, Seed, '_', R, A, Perm}, _From, State)-> 
+		Name = debris_lib:open_dets(R),
+		Users = dets:match(Name, {{user,'$1'},'_','_'}),
+		dets:close(Name),
+		lists:foreach(fun([U]) ->  gen_server:cast(self(), {permit, P, Seed, U, R, A, Perm}) end, Users),
+		{reply, true, State};
+% Treat access and rights for one user and one repository
+handle_call({permit, P, Seed, U, R, A, Perm}, _From, State)-> 
+		Res = permit(P, Seed, U, R, A, Perm),
+		{reply, Res, State};
+%%-------------------------------------------------------------------------
+%% Get info on users
+%%-------------------------------------------------------------------------
+
+handle_call({info, P, Seed, '_', R}, _From, State)-> 
+		Name = debris_lib:open_dets(R),
+		Res = dets:match(Name, {{user, '$1'}, '$2'}),
+		{reply, Res, State};
+
+handle_call({info, P, Seed, U, R}, _From, State)-> 
+		Name = debris_lib:open_dets(R),
+		Res = dets:match(Name, {{user, U}, '$1'}),
+		{reply, Res, State};
+%%-------------------------------------------------------------------------
 %% Fallback
 %%-------------------------------------------------------------------------
 
@@ -301,5 +354,41 @@ handle_call(_, _From, State) -> {reply, {error, function_clause}, State, hiberna
 
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
+
+%%********************* PRIVATE FUNCTIONS *********************************
+
+%%-------------------------------------------------------------------------
+%% @doc 
+%% @end
+%%-------------------------------------------------------------------------
+permit(P, Seed, U, R, A, Perm) -> 
+		% Verify password
+		case check_admin_password(P, Seed) of
+				true -> Name = debris_lib:open_dets(R),
+						PermX = case Perm of
+									 [] -> % Get current perms
+										   [[PermXX]] = dets:match(Name, {{user, U}, '_', '$1'}),
+										   case PermXX of
+												[] -> "r" ;
+										   		_  -> PermXX 
+										   end;
+									 _  -> Perm
+								end,
+						AX = case A of
+									 [] -> % Get current access status
+										   [[AXX]] = dets:match(Name, {{user, U}, '$1', '_'}),
+										   case AXX  of
+												[] -> false ;
+										   		_  -> AXX 
+										   end;
+									 _  -> A
+							 end,
+						ok = dets:delete(Name, {user, U}),
+						ok = dets:insert(Name, {{user, U}, AX, PermX}),
+                        dets:sync(Name),
+						dets:close(Name),
+						true;
+				_ -> false 
+		  end.
 
 
