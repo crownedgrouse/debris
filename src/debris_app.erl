@@ -30,6 +30,7 @@
 
 -export([start/2]).
 -export([stop/1]).
+-export([config_change/3]).
 
 start(_Type, _Args) ->
     % Replace admin_passwd by its SHA256 hash
@@ -50,5 +51,25 @@ start(_Type, _Args) ->
     Ret.
 
 stop(_State) ->
+	ok.
+
+% TODO
+config_change(Changed, New, Removed) ->
+	% Check if priv_dir is changed, added or removed
+    _C = lists:keymember(priv_dir, 1, Changed),
+	_A = lists:keymember(priv_dir, 1, New),
+	_R = lists:keymember(priv_dir, 1, Removed),
+	% If added, check if 'legacy' or path different than ~/.debris
+
+    % If removed
+
+	% If changed
+	
+	ok.
+
+% TODO
+migrate_data(_From, _To) ->  
+	% Do a tar from old version data
+	% Extract to new directory
 	ok.
 

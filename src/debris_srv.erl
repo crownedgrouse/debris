@@ -352,7 +352,6 @@ handle_call(_, _From, State) -> {reply, {error, function_clause}, State, hiberna
 %% @end
 %%-------------------------------------------------------------------------
 
-
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%********************* PRIVATE FUNCTIONS *********************************

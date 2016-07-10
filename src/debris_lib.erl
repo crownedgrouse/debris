@@ -708,15 +708,48 @@ insert_deb(Name, Deb, Val)
 %%-------------------------------------------------------------------------
 
 
-open_dets(Repo) ->     % Dets file must be in priv directory
-                   PrivDir = case code:priv_dir(debris) of
-                                    {error, bad_name} -> "." ;
-                                    P -> P
-                             end,
+open_dets(Repo) -> % Dets file must be in a private directory
+                   PrivDir = private_dir() ,
                    Dets = filename:join([PrivDir, "repos", Repo , Repo ++ ".dets"]),
                    {ok, Name} = dets:open_file(list_to_atom(Repo), [{type, bag},
                                                           {file, Dets}]),
                    Name.
+%%-------------------------------------------------------------------------
+%% @doc Get private directory
+%%      Use zotonic approach :  ~/.debris/{VERSION}/ .
+%%      Check only once on disk, then store as application variable.
+%%      Dets files will be stored there under 'repos' directory.
+%%      On upgrade, dets files are copied in new version parallel directory,
+%%      and maybe modified for new API. In case of downgrade, old dets files
+%%      are used again, this may imply new data lost since upgrade 
+%%      (user or access rights change for instance).
+%%      Use debris's priv dir if variable already set to 'legacy'.
+%% @end
+%%-------------------------------------------------------------------------
+
+private_dir() -> 
+	 Dir = case application:get_env(debris, priv_dir) of
+			{ok, 'legacy'} -> case code:priv_dir(debris) of
+                        		{error, bad_name} -> "." ;
+                        		P -> {ok, Version} = application:get_key(debris,vsn),
+							  		 Base = filename:join([P, Version]),
+									 ok = filelib:ensure_dir(filename:join(Base, "fake")),
+							  		 application:set_env(debris, priv_dir, Base),
+									 Base
+                 			  end;
+			undefined      -> % Set value and create path on disk
+							  {ok, Home} = init:get_argument(home),
+							  Hidden = ".debris",
+							  {ok, Version} = application:get_key(debris,vsn),
+							  RD = "repos",
+							  Base = filename:join([Home, Hidden, Version]),
+							  Repos = application:get_env(debris, repositories, []),
+							  lists:foreach(fun(R)-> ok = filelib:ensure_dir(filename:join([Base, RD, R, "fake"])) end, Repos),
+							  application:set_env(debris, priv_dir, Base),
+							  Base;							  
+			{ok, D}        -> D
+	       end,
+	 Dir.
 
 %%-------------------------------------------------------------------------
 %% @doc 
