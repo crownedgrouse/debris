@@ -331,16 +331,33 @@ handle_call({permit, P, Seed, U, R, A, Perm}, _From, State)->
 %%-------------------------------------------------------------------------
 %% Get info on users
 %%-------------------------------------------------------------------------
-
+% get info on any user of any repo
+handle_call({info, P, Seed, '_', '_'}, _From, State)-> 
+		Repos = application:get_env(debris, repositories, []),
+		Res = lists:map(fun(R) -> Name = debris_lib:open_dets(R),
+								  L1 = dets:match(Name, {{user, '$1'}, '$2', '$3'}),
+                                  L = lists:map(fun([A, B, C]) -> {user, A, B, C} end, L1),
+								 {repository, R, L } end, Repos),
+		{reply, Res, State};
+% get info on a user of any repo
+handle_call({info, P, Seed, U, '_'}, _From, State)-> 
+		Repos = application:get_env(debris, repositories, []),
+		Res = lists:map(fun(R) -> Name = debris_lib:open_dets(R),
+								  L1 = dets:match(Name, {{user, U}, '$1', '$2'}),
+                                  L = lists:map(fun([A, B]) -> {user, U, A, B} end, L1),
+								 {repository, R, L } end, Repos),
+		{reply, Res, State};
+% get info on any user of a repo
 handle_call({info, P, Seed, '_', R}, _From, State)-> 
 		Name = debris_lib:open_dets(R),
-		Res = dets:match(Name, {{user, '$1'}, '$2'}),
-		{reply, Res, State};
-
+		Res = dets:match(Name, {{user, '$1'}, '$2', '$3'}),
+        Res2 = lists:map(fun([A, B, C]) -> {user, A, B, C} end, Res),
+		{reply, Res2, State};
+% get info on a user of a repo
 handle_call({info, P, Seed, U, R}, _From, State)-> 
 		Name = debris_lib:open_dets(R),
-		Res = dets:match(Name, {{user, U}, '$1'}),
-		{reply, Res, State};
+		[[C, L]] = dets:match(Name, {{user, U}, '$1', '$2'}),
+		{reply, [{user, U, C, L}], State};
 %%-------------------------------------------------------------------------
 %% Fallback
 %%-------------------------------------------------------------------------
